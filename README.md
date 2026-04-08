@@ -1,112 +1,262 @@
-![Obsidian Image Gallery](assets/obsidian-image-gallery-header.jpg)
+# Media Gallery
 
-# Obsidian Image Gallery
-Obsidian Image Gallery is a zero setup masonry image gallery for [Obsidian](https://obsidian.md/).
+Media Gallery is an Obsidian community plugin for rendering image, GIF, video, and audio galleries directly inside notes.
 
-**Table of Contents**
-- [Requirements](#requirements)
-- [Usage](#usage)
-- [Settings](#settings)
-- [Notes](#notes)
-- [Examples](#examples)
-- [Acknowledgments](#acknowledgments)
-- [License](#license)
-- [Contacts](#contacts)
+It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugin and keeps compatibility with the original `img-gallery` syntax while adding a broader mixed-media workflow.
 
-## Requirements
+Short description: **Flexible and convenient gallery for images, GIFs, videos, and music.**
 
-- [Obsidian](https://obsidian.md/) `(ver >= 1.1.8)`
-- A folder(s) of local images located somewhere in your vault
+## Attribution
 
-## Installation
+This plugin is based on `obsidian-image-gallery` by Luca Orio and was substantially extended for mixed-media use cases by `rokokol`.
 
-Obsidian Image Gallery can be installed from within Obsidian, as for [every other community plugin](https://help.obsidian.md/Advanced+topics/Community+plugins#Discover+and+install+community+plugins).
+- Original project: `https://github.com/lucaorio/obsidian-image-gallery`
+- Original license: `MIT`
 
-## Usage
+## Highlights
 
-To create a dynamic gallery, add one of the following code blocks to a note (make sure to customize the path!):
+- Renders galleries from a folder path or an explicit list of embedded files
+- Supports images, GIFs, videos, and audio files in the same block
+- Provides image lightbox with zoom, pan, double-click zoom toggle, and open-in-note action
+- Opens videos and audio in focused modals with native playback controls
+- Displays audio metadata, optional embedded cover art, waveform, and spectrogram previews
+- Supports cache control from plugin settings for better memory/performance tradeoffs
+- Keeps backward compatibility with `img-gallery` and `img-gal`
 
-For a horizontal masonry:
-````
-```img-gallery
-path: Attachments/Folder
-type: horizontal
+## Supported Media
+
+- Images: `jpg`, `jpeg`, `png`, `gif`, `webp`, `tif`, `tiff`, `bmp`, `svg`, `avif`
+- Video: `mp4`, `webm`, `mov`, `m4v`, `ogv`
+- Audio: `mp3`, `m4a`, `wav`, `ogg`, `oga`, `flac`, `aac`, `opus`
+
+## Block Aliases
+
+The preferred code block name is:
+
+````markdown
+```media-gallery
+...
 ```
 ````
 
-For a vertical masonry:
-````
-```img-gallery
-path: Attachments/Folder
+The following legacy aliases are also supported:
+
+- `img-gallery`
+- `img-gal`
+
+## Usage Modes
+
+### 1. Folder-Based Gallery
+
+Use a vault-relative folder path to build a gallery dynamically.
+
+````markdown
+```media-gallery
+path: media/Trip to Kazan
 type: vertical
+columns: 2
+sortby: mtime
+sort: desc
 ```
 ````
 
-Take a look at [settings](#settings) to see how to tweak some properties of the gallery; the examples available above are the most minimal configuration possible.
+This mode scans the folder recursively. If `path` is omitted or set to `*`, `.`, or `/`, the plugin searches the whole vault.
 
-In *[Live Preview](https://help.obsidian.md/Live+preview+update)* mode, the gallery will be generated after moving the cursor outside the code block. Using the regular *Source Mode*, press `cmd+e` (or `ctrl+e`) to trigger Obsidian's Note Preview.
+### 2. Explicit Media List
 
-![Obsidian Image Gallery - Animation](assets/obsidian-image-gallery.gif)
+Use embedded wiki-links, markdown image links, or direct paths/URLs.
 
-`1.1.1` introduces a lightbox view accessible by clicking on any image part of the gallery. Then, if you need to, click the button on the top right to open the original image in a new tab.
+````markdown
+```media-gallery
+columns: 2
+type: vertical
 
-![Obsidian Image Gallery - Animation](assets/obsidian-image-gallery-lightbox.jpg)
+![[photo.jpg]]
+![[clip.mp4]]
+![[track.mp3]]
+```
+````
 
-## Settings
+This mode is ideal for `Media Dump` sections in daily, weekly, yearly, and hub notes.
 
-Settings can be customized in any order, in `yaml` syntax. Optional properties default to the values outlined in the tables below:
+## Settings Inside the Block
 
-| Option   | Default      | Alternatives    | Required | Description                            |
-| -------- | ------------ | --------------- | -------- | -------------------------------------- |
-| `path`   | -            | -               | Yes      | Path relative to the root of the vault |
-| `type`   | `horizontal` | `vertical`      | No       | Type of masonry                        |
-| `gutter` | `8`          | (any number)    | No       | Spacing in px between the images       |
-| `radius` | `0`          | (any number)    | No       | Border radius in px of the images      |
-| `sortby` | `ctime`      | `mtime`, `name` | No       | Sort images by                         |
-| `sort`   | `desc`       | `asc`           | No       | Order of sorting                       |
+The plugin accepts YAML-like modifiers at the top of the block.
 
-Options applicable only for `type=horizontal`:
+| Option | Default | Values | Notes |
+| --- | --- | --- | --- |
+| `path` | `*` | vault-relative path, `*`, `.`, `/` | Folder mode only |
+| `type` | `vertical` | `vertical`, `horizontal`, `mosaic`, `collage` | `collage` is treated as `mosaic` |
+| `fit` | `cover` or `contain` | `cover`, `contain` | `mosaic` defaults to `contain`; others default to `cover` |
+| `columns` | `3` desktop / `1` mobile | number | Most relevant for `vertical` |
+| `mobile` | `1` | number | Mobile column count |
+| `height` | `260` | number | Base tile height |
+| `gutter` | `8` | number | Gap in pixels |
+| `radius` | `0` in folder mode, `10` in explicit mode | number | Border radius in pixels |
+| `sortby` | `ctime` | `ctime`, `mtime`, `name` | Folder mode only |
+| `sort` | `desc` | `asc`, `desc` | Folder mode only |
+| `waveform` | `true` | `true`, `false` | Audio preview visualization |
+| `spectrogram` | `false` | `true`, `false` | Uses spectrogram instead of waveform |
 
-| Option   | Default | Alternatives | Required | Description              |
-| -------- | ------- | ------------ | -------- | ------------------------ |
-| `height` | `260`   | (any number) | No       | Height in px of all rows |
+## Layout Modes
 
-Options applicable only for `type=vertical`:
+### `vertical`
 
-| Option    | Default | Alternatives | Required | Description                   |
-| --------- | ------- | ------------ | -------- | ----------------------------- |
-| `columns` | `3`     | (any number) | No       | Number of columns for desktop |
-| `mobile`  | `1`     | (any number) | No       | Number of columns for mobile  |
+- Default mode
+- Masonry-style multi-column layout
+- Good for mixed `Media Dump` blocks
 
+### `horizontal`
 
-## Notes:
-- For `path` there is no need to specify the name of the vault
-- As mentioned in the [Requirements](#requirements) section, only local images are accepted. This plugin was designed with a specific use case in mind: create a gallery from a folder of images with as little setup as possible.
-- Make sure the images to embed have a reasonable size: generating a masonry with 60 4k photos will most likely slow down the app to a crawl!
+- Row-based layout with fixed item height
+- Better when order matters visually
 
-An additional note about the orientation of the masonry vs. the distribution of its images: [until a true masonry layout](https://drafts.csswg.org/css-grid-3/) is available for native `css` grids, the sorting of the vertical version is a hit or miss. This is because the flow of its elements goes from top to bottom (see [this article](https://css-tricks.com/piecing-together-approaches-for-a-css-masonry-layout) for more info about it.) If sorting is critical, please rely on the horizontal version; its images are sometimes cropped, but their ordering is way more intuitive.
+### `mosaic`
 
-## Examples:
-![Obsidian Image Gallery - Examples](assets/obsidian-image-gallery-examples.jpg)
+- Smart tiled collage layout
+- Better for small curated image sets
+- Defaults to `fit: contain` to reduce aggressive cropping
 
-## Changelog
+### `collage`
 
-`1.1.1`
-  - fixed bug for the "open image in new tab" feature
+- Alias for `mosaic`
+- Preserved for convenience and compatibility
 
-`1.1.0`
-  - fixed alphabetical sorting
-  - introduced lightbox for both desktop and mobile
-  - added a "open image in new tab" button available in the lightbox
-  - fixed the casing of README.md to let Obsidian retrieve the correct file
+## Audio Features
 
-## Acknowledgments
-All photos in the header are by various photographers and available on [Unsplash](https://unsplash.com/s/photos/architecture).
+- Audio cards show track name, file type, and optional subtitle from metadata
+- MP3 metadata parsing supports `title`, `artist`, `album`, and embedded cover art when available
+- Audio modal can autoplay when opened
+- Waveform is used by default
+- Spectrogram can be enabled per block with `spectrogram: true`
+- Audio visualizations can be disabled globally in plugin settings
+
+### Example: Audio-Heavy Block
+
+````markdown
+```media-gallery
+type: vertical
+columns: 2
+spectrogram: true
+
+![[track-01.mp3]]
+![[track-02.flac]]
+![[track-03.m4a]]
+```
+````
+
+## Plugin Settings
+
+### Performance
+
+- `Enable cache` — caches the vault media list and folder lookups in memory
+
+### Audio
+
+- `Enable audio visualizations` — toggles waveform and spectrogram rendering
+- `Autoplay audio on open` — starts playback automatically when opening an audio card
+
+## Performance Notes
+
+- Cache is invalidated when files are created, deleted, or renamed in the vault
+- Turning cache off reduces memory usage but makes each gallery render rescan vault files
+- Spectrograms are heavier than waveforms; use them selectively in large notes
+- Audio spectrogram previews are rendered to `canvas` for better scroll performance than large DOM grids
+
+## Default Behavior
+
+### Folder galleries
+
+- `type: vertical`
+- `fit: cover`
+- `height: 260`
+- `gutter: 8`
+
+### Explicit media lists
+
+- `type: vertical`
+- `fit: cover`
+- `height: 260`
+- `gutter: 8`
+- `radius: 10`
+- `waveform: true`
+- `spectrogram: false`
+
+## Examples
+
+### Mixed Media Dump
+
+````markdown
+```media-gallery
+columns: 2
+type: vertical
+
+![[photo-1.jpg]]
+![[photo-2.jpg]]
+![[clip.mp4]]
+![[voice-note.mp3]]
+```
+````
+
+### Search the Entire Vault
+
+````markdown
+```media-gallery
+path: "*"
+type: vertical
+columns: 2
+```
+````
+
+### Horizontal Strip
+
+````markdown
+```media-gallery
+type: horizontal
+height: 280
+gutter: 12
+
+![[photo-1.jpg]]
+![[photo-2.jpg]]
+![[photo-3.jpg]]
+```
+````
+
+### Gentle Mosaic
+
+````markdown
+```media-gallery
+type: mosaic
+fit: contain
+height: 280
+
+![[photo-1.jpg]]
+![[photo-2.jpg]]
+![[photo-3.jpg]]
+```
+````
+
+## Installing from Source
+
+1. Build or copy `main.js`, `manifest.json`, and `styles.css`.
+2. Place them in your vault under `.obsidian/plugins/media-gallery/`.
+3. Reload Obsidian.
+4. Enable **Media Gallery** in Community Plugins.
+
+## Release Files
+
+For GitHub Releases, attach:
+
+- `manifest.json`
+- `main.js`
+- `styles.css`
+
+## Development Notes
+
+- The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
+- The release id is `media-gallery`.
+- The current release version is `1.0.0`.
 
 ## License
-![https://github.com/lucaorio/obsidian-image-gallery/blob/master/license](https://img.shields.io/badge/license-MIT-blue.svg)
 
-## Contacts
-- Twitter: [@lucaorio_](http://twitter.com/@lucaorio_)
-- Website: [lucaorio.com](http://lucaorio.com)
-- Email: [luca.o@me.com](mailto:luca.o@me.com)
+This project is released under the MIT License. See `LICENSE`.
