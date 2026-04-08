@@ -1,0 +1,9 @@
+{
+  "id": "media-gallery",
+  "name": "Media Gallery",
+  "version": "1.0.0",
+  "minAppVersion": "1.1.8",
+  "description": "Flexible and convenient gallery for images, GIFs, videos, and music.",
+  "author": "rokokol",
+  "isDesktopOnly": false
+}
