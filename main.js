@@ -480,6 +480,37 @@ var normalizeListSetting = (value) => {
   const normalized = value.trim().replace(/^\[(.*)\]$/, "$1");
   return normalized.split(",").map((item) => item.trim()).filter(Boolean);
 };
+var normalizeSeedSetting = (value) => {
+  if (value === null || typeof value === "undefined")
+    return void 0;
+  const normalized = `${value}`.trim();
+  return normalized ? normalized : void 0;
+};
+var hashSeed = (seed) => {
+  let hash = 2166136261;
+  const text = `${seed}`;
+  for (let index = 0; index < text.length; index++) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+};
+var createSeededRandom = (seed) => {
+  let state = hashSeed(seed) || 1;
+  return () => {
+    state = Math.imul(state, 1664525) + 1013904223 >>> 0;
+    return state / 4294967296;
+  };
+};
+var shuffleArray = (items, seed) => {
+  const shuffled = [...items];
+  const random = typeof seed === "undefined" ? Math.random : createSeededRandom(seed);
+  for (let index = shuffled.length - 1; index > 0; index--) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [shuffled[index], shuffled[swapIndex]] = [shuffled[swapIndex], shuffled[index]];
+  }
+  return shuffled;
+};
 var escapeRegex = (value) => value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
 var createPathPatternMatcher = (pattern, allowFlexible) => {
   if (!pattern)
@@ -609,11 +640,25 @@ var mergeMediaEntries = (baseEntries, extraEntries) => {
   });
   return merged;
 };
+var applyMediaOrderingAndLimit = (items, settings) => {
+  const usesRandomSort = settings.sortby === "rand" || settings.sortby === "random";
+  let orderedItems = items;
+  if (usesRandomSort) {
+    const effectiveSeed = typeof settings.seed === "undefined" ? `${Date.now()}-${Math.random()}` : settings.seed;
+    orderedItems = shuffleArray(items, effectiveSeed);
+  }
+  return applyMediaLimit(orderedItems, settings.limit);
+};
+var applyMediaLimit = (items, limit) => {
+  if (limit > 0)
+    return items.slice(0, limit);
+  return items;
+};
 var parseExplicitBlock = (app2, container, src, sourcePath) => {
   const lines = src.split("\n").map((line) => line.trim()).filter(Boolean);
   const overrides = {};
   const imageLines = [];
-  const knownKeys = /* @__PURE__ */ new Set(["type", "radius", "gutter", "sortby", "sort", "mobile", "columns", "height", "path", "fit", "waveform", "spectrogram", "extensions", "exclude"]);
+  const knownKeys = /* @__PURE__ */ new Set(["type", "radius", "gutter", "sortby", "sort", "mobile", "columns", "height", "path", "fit", "waveform", "spectrogram", "extensions", "exclude", "limit", "seed"]);
   lines.forEach((line) => {
     const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/);
     if (!match) {
@@ -626,7 +671,7 @@ var parseExplicitBlock = (app2, container, src, sourcePath) => {
       imageLines.push(line);
       return;
     }
-    if (["radius", "gutter", "mobile", "columns", "height"].includes(key)) {
+    if (["radius", "gutter", "mobile", "columns", "height", "limit"].includes(key)) {
       const numeric = Number(rawValue);
       if (!Number.isNaN(numeric))
         overrides[key] = numeric;
@@ -640,6 +685,10 @@ var parseExplicitBlock = (app2, container, src, sourcePath) => {
       overrides[key] = normalizeListSetting(rawValue);
       return;
     }
+    if (key === "seed") {
+      overrides[key] = normalizeSeedSetting(rawValue);
+      return;
+    }
     overrides[key] = rawValue;
   });
   return {
@@ -647,7 +696,7 @@ var parseExplicitBlock = (app2, container, src, sourcePath) => {
     overrides
   };
 };
-var getImagesList = (plugin, app2, container, settings) => {
+var getCandidateMediaFiles = (plugin, app2, container, settings) => {
   const requestedPath = settings.path;
   const shouldSearchEverywhere = isSearchEverywherePath(requestedPath);
   const usesPathGlob = isRecursiveGlobPath(requestedPath) || isShallowGlobPath(requestedPath);
@@ -675,13 +724,24 @@ var getImagesList = (plugin, app2, container, settings) => {
     render_error_default(container, error);
     throw new Error(error);
   }
-  const orderedImages = mediaFiles.sort((a, b) => {
-    const refA = settings.sortby === "name" ? a["name"].toUpperCase() : a.stat[settings.sortby];
-    const refB = settings.sortby === "name" ? b["name"].toUpperCase() : b.stat[settings.sortby];
-    return refA < refB ? -1 : refA > refB ? 1 : 0;
-  });
-  const sortedImages = settings.sort === "asc" ? orderedImages : orderedImages.reverse();
-  return sortedImages.map((file) => createMediaEntry(app2, file));
+  return mediaFiles;
+};
+var getImagesList = (plugin, app2, container, settings) => {
+  const mediaFiles = getCandidateMediaFiles(plugin, app2, container, settings);
+  let orderedImages = [...mediaFiles];
+  if (settings.sortby === "rand" || settings.sortby === "random") {
+    orderedImages = applyMediaOrderingAndLimit(orderedImages, settings);
+  } else {
+    orderedImages.sort((a, b) => {
+      const refA = settings.sortby === "name" ? a["name"].toUpperCase() : a.stat[settings.sortby];
+      const refB = settings.sortby === "name" ? b["name"].toUpperCase() : b.stat[settings.sortby];
+      return refA < refB ? -1 : refA > refB ? 1 : 0;
+    });
+    if (settings.sort !== "asc")
+      orderedImages.reverse();
+    orderedImages = applyMediaLimit(orderedImages, settings.limit);
+  }
+  return orderedImages.map((file) => createMediaEntry(app2, file));
 };
 var get_imgs_list_default = getImagesList;
 
@@ -708,6 +768,8 @@ var getSettings = (src, container) => {
     spectrogram: void 0,
     extensions: void 0,
     exclude: void 0,
+    limit: void 0,
+    seed: void 0,
     mobile: void 0,
     columns: void 0,
     height: void 0
@@ -723,6 +785,8 @@ var getSettings = (src, container) => {
   settings.spectrogram = (_h = settingsSrc.spectrogram) != null ? _h : false;
   settings.extensions = normalizeListSetting(settingsSrc.extensions);
   settings.exclude = normalizeListSetting(settingsSrc.exclude);
+  settings.limit = typeof settingsSrc.limit === "number" ? settingsSrc.limit : Number.isNaN(Number(settingsSrc.limit)) ? 0 : Number(settingsSrc.limit);
+  settings.seed = normalizeSeedSetting(settingsSrc.seed);
   settings.mobile = (_i = settingsSrc.mobile) != null ? _i : 1;
   if (import_obsidian2.Platform.isDesktop)
     settings.columns = (_j = settingsSrc.columns) != null ? _j : 3;
@@ -745,6 +809,8 @@ var getDefaultGallerySettings = (type = "vertical") => {
     spectrogram: false,
     extensions: [],
     exclude: [],
+    limit: 0,
+    seed: void 0,
     mobile: 1,
     columns: import_obsidian2.Platform.isDesktop ? 3 : 1,
     height: 260
@@ -3871,8 +3937,8 @@ var imgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
         Object.assign(this._settings, explicitBlock.overrides);
         if (this._settings.type === "collage")
           this._settings.type = "mosaic";
-        const pathImages = hasExplicitPath ? get_imgs_list_default(this.plugin, this.app, this.container, this._settings) : [];
-        this._imagesList = mergeMediaEntries(pathImages, explicitImages).filter(createMediaItemFilter(this._settings));
+        const pathImages = hasExplicitPath ? getCandidateMediaFiles(this.plugin, this.app, this.container, this._settings).map((file) => createMediaEntry(this.app, file)) : [];
+        this._imagesList = applyMediaOrderingAndLimit(mergeMediaEntries(pathImages, explicitImages), this._settings);
       } else {
         this._settings = get_settings_default(this.src, this.container);
         this._imagesList = get_imgs_list_default(this.plugin, this.app, this.container, this._settings);

@@ -13,6 +13,11 @@ This plugin is based on `obsidian-image-gallery` by Luca Orio and was substantia
 - Original project: `https://github.com/lucaorio/obsidian-image-gallery`
 - Original license: `MIT`
 
+## Version Lineage
+
+- `1.0.0`–`1.1.1` — original `obsidian-image-gallery` releases by Luca Orio
+- `2.0.0` — first `Media Gallery` release by `rokokol`
+
 ## Highlights
 
 - Renders galleries from a folder path or an explicit list of embedded files
@@ -113,10 +118,12 @@ The plugin accepts YAML-like modifiers at the top of the block.
 | `height` | `260` | number | Base tile height |
 | `gutter` | `8` | number | Gap in pixels |
 | `radius` | `0` in folder mode, `10` in explicit mode | number | Border radius in pixels |
-| `sortby` | `ctime` | `ctime`, `mtime`, `name` | Folder mode only |
+| `sortby` | `ctime` | `ctime`, `mtime`, `name`, `rand`, `random` | `rand` and `random` act as aliases for random ordering |
 | `sort` | `desc` | `asc`, `desc` | Folder mode only |
 | `extensions` | none | comma-separated list or YAML array | Keeps only matching file extensions |
 | `exclude` | none | comma-separated list or YAML array | Excludes matching paths or patterns |
+| `limit` | `0` | number | Limits how many media items are rendered after filtering and ordering; `0` disables the limit |
+| `seed` | random | string or number | Makes `sortby: rand` or `sortby: random` deterministic when set |
 | `waveform` | `true` | `true`, `false` | Audio preview visualization |
 | `spectrogram` | `false` | `true`, `false` | Uses spectrogram instead of waveform |
 
@@ -124,6 +131,9 @@ Examples:
 
 - `extensions: jpg, png, mp4`
 - `exclude: media/private/**, media/tmp/*, voice-note.mp3`
+- `sortby: rand`
+- `limit: 24`
+- `seed: trip-2025`
 
 ## Layout Modes
 
@@ -203,6 +213,7 @@ spectrogram: true
 - `fit: cover`
 - `height: 260`
 - `gutter: 8`
+- `limit: 0`
 
 ### Explicit media lists
 
@@ -213,6 +224,7 @@ spectrogram: true
 - `radius: 10`
 - `waveform: true`
 - `spectrogram: false`
+- `limit: 0`
 
 ## Examples
 
@@ -267,6 +279,9 @@ columns: 2
 path: media/**
 extensions: jpg, png, mp4
 exclude: media/private/**, media/tmp/*
+sortby: rand
+limit: 24
+seed: trip-2025
 type: vertical
 columns: 2
 ```
@@ -319,7 +334,7 @@ For GitHub Releases, attach:
 
 - The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
 - The release id is `media-gallery`.
-- The current release version is `1.0.0`.
+- The current release version is `2.0.0`.
 
 ## License
 
