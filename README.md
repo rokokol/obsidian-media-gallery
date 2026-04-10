@@ -2,9 +2,11 @@
 
 Media Gallery is an Obsidian community plugin for rendering image, GIF, video, and audio galleries directly inside notes.
 
+<img width="1920" height="1080" alt="preview" src="https://github.com/user-attachments/assets/7cfa63d7-8648-4dbd-8e48-eb82dc22ebf7" />
+
 It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugin and keeps compatibility with the original `img-gallery` syntax while adding a broader mixed-media workflow.
 
-Short description: **Flexible and convenient gallery for images, GIFs, videos, and music.**
+> **Flexible and convenient gallery for images, GIFs, videos, and music.**
 
 ## Attribution
 
@@ -50,6 +52,10 @@ The following legacy aliases are also supported:
 - `img-gal`
 
 ## Usage Modes
+
+
+https://github.com/user-attachments/assets/0a2131d3-a016-41b0-acf1-e8b5dbfa66a8
+
 
 ### 1. Folder-Based Gallery
 
@@ -139,6 +145,9 @@ Examples:
 - `seed: trip-2025`
 
 ## Layout Modes
+
+https://github.com/user-attachments/assets/fd647f27-886d-4b86-a1f0-ab32d925f4a1
+
 
 ### `vertical`
 
@@ -325,14 +334,6 @@ height: 280
 2. Place them in your vault under `.obsidian/plugins/media-gallery/`.
 3. Reload Obsidian.
 4. Enable **Media Gallery** in Community Plugins.
-
-## Release Files
-
-For GitHub Releases, attach:
-
-- `manifest.json`
-- `main.js`
-- `styles.css`
 
 ## Development Notes
 
