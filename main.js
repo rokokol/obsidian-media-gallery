@@ -142,7 +142,8 @@ var galleryRuntimeSettings = {
   enableCache: true,
   enableAudioVisualizations: true,
   autoplayAudioOnOpen: true,
-  enableFlexiblePathPatterns: true
+  enableFlexiblePathPatterns: true,
+  matchWildcardsAgainstFileNames: true
 };
 var readSynchsafeInteger = (bytes, start) => {
   return (bytes[start] & 127) << 21 | (bytes[start + 1] & 127) << 14 | (bytes[start + 2] & 127) << 7 | bytes[start + 3] & 127;
@@ -512,6 +513,28 @@ var shuffleArray = (items, seed) => {
   return shuffled;
 };
 var escapeRegex = (value) => value.replace(/[|\\{}()[\]^$+?.]/g, "\\$&");
+var createGlobRegex = (pattern, allowSlash) => {
+  const placeholder = "::DOUBLE_STAR::";
+  const starPattern = allowSlash ? ".*" : "[^/]*";
+  const questionPattern = allowSlash ? "." : "[^/]";
+  const regexPattern = `^${escapeRegex(`${pattern}`).replace(/\*\*/g, placeholder).replace(/\*/g, starPattern).replace(/\\\?/g, questionPattern).replace(new RegExp(placeholder, "g"), ".*")}$`;
+  return new RegExp(regexPattern);
+};
+var getPathWithoutExtension = (filePath) => {
+  const normalizedPath = `${filePath}`.split("?")[0].split("#")[0];
+  const lastSlashIndex = normalizedPath.lastIndexOf("/");
+  const lastDotIndex = normalizedPath.lastIndexOf(".");
+  if (lastDotIndex <= lastSlashIndex)
+    return normalizedPath;
+  return normalizedPath.slice(0, lastDotIndex);
+};
+var getFileName = (filePath) => {
+  const normalizedPath = `${filePath}`.split("?")[0].split("#")[0];
+  return normalizedPath.split("/").pop() || normalizedPath;
+};
+var getFileNameWithoutExtension = (filePath) => {
+  return getFileName(getPathWithoutExtension(filePath));
+};
 var createPathPatternMatcher = (pattern, allowFlexible) => {
   if (!pattern)
     return () => false;
@@ -531,9 +554,23 @@ var createPathPatternMatcher = (pattern, allowFlexible) => {
     };
   }
   if (allowFlexible && hasWildcardPattern(normalizedPattern)) {
+    if (galleryRuntimeSettings.matchWildcardsAgainstFileNames) {
+      const lastSlashIndex = normalizedPattern.lastIndexOf("/");
+      const dirPattern = lastSlashIndex >= 0 ? normalizedPattern.slice(0, lastSlashIndex) : "";
+      const filePattern = lastSlashIndex >= 0 ? normalizedPattern.slice(lastSlashIndex + 1) : normalizedPattern;
+      const dirRegex = dirPattern ? createGlobRegex(dirPattern, false) : null;
+      const fileRegex = createGlobRegex(filePattern, true);
+      return (filePath) => {
+        const normalizedFilePath = `${filePath}`.split("?")[0].split("#")[0];
+        const dirPath = normalizedFilePath.split("/").slice(0, -1).join("/");
+        if (dirRegex && !dirRegex.test(dirPath))
+          return false;
+        return fileRegex.test(getFileName(normalizedFilePath)) || fileRegex.test(getFileNameWithoutExtension(normalizedFilePath));
+      };
+    }
     const regexPattern = `^${escapeRegex(normalizedPattern).replace(/\*\*/g, "::DOUBLE_STAR::").replace(/\*/g, "[^/]*").replace(/\\\?/g, "[^/]").replace(/::DOUBLE_STAR::/g, ".*")}$`;
     const regex = new RegExp(regexPattern);
-    return (filePath) => regex.test(filePath);
+    return (filePath) => regex.test(filePath) || regex.test(getPathWithoutExtension(filePath));
   }
   const exactPath = (0, import_obsidian.normalizePath)(normalizedPattern);
   return (filePath) => filePath === exactPath || filePath.startsWith(`${exactPath}/`);
@@ -774,7 +811,7 @@ var getSettings = (src, container) => {
     columns: void 0,
     height: void 0
   };
-  settings.path = settingsSrc.path ? (0, import_obsidian2.normalizePath)(settingsSrc.path) : "*";
+  settings.path = settingsSrc.path ? (0, import_obsidian2.normalizePath)(settingsSrc.path) : void 0;
   settings.type = (_a = settingsSrc.type) != null ? _a : "vertical";
   settings.radius = (_b = settingsSrc.radius) != null ? _b : 0;
   settings.gutter = (_c = settingsSrc.gutter) != null ? _c : 8;
@@ -798,7 +835,7 @@ var getSettings = (src, container) => {
 var get_settings_default = getSettings;
 var getDefaultGallerySettings = (type = "vertical") => {
   return {
-    path: "*",
+    path: void 0,
     type,
     radius: 0,
     gutter: 8,
@@ -3928,6 +3965,8 @@ var imgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
   }
   onload() {
     return __async(this, null, function* () {
+      if (!this.src.trim())
+        return;
       const explicitBlock = parseExplicitBlock(this.app, this.container, this.src, this.sourcePath);
       const explicitImages = explicitBlock.images;
       const hasExplicitPath = typeof explicitBlock.overrides.path !== "undefined";
@@ -3941,8 +3980,12 @@ var imgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
         this._imagesList = applyMediaOrderingAndLimit(mergeMediaEntries(pathImages, explicitImages), this._settings);
       } else {
         this._settings = get_settings_default(this.src, this.container);
+        if (!this._settings.path)
+          return;
         this._imagesList = get_imgs_list_default(this.plugin, this.app, this.container, this._settings);
       }
+      if (!this._imagesList.length)
+        return;
       if (this._settings.type === "horizontal") {
         this._gallery = build_horizontal_default(this.container, this._imagesList, this._settings);
       } else if (this._settings.type === "mosaic" || this._settings.type === "collage") {
@@ -3974,7 +4017,8 @@ var DEFAULT_PLUGIN_SETTINGS = {
   enableCache: true,
   enableAudioVisualizations: true,
   autoplayAudioOnOpen: true,
-  enableFlexiblePathPatterns: true
+  enableFlexiblePathPatterns: true,
+  matchWildcardsAgainstFileNames: true
 };
 var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
   constructor(app, plugin) {
@@ -3992,12 +4036,37 @@ var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
       yield this.plugin.saveSettings();
     })));
     containerEl.createEl("h3", { text: "Paths" });
+    let wildcardFileNameToggle = null;
+    const syncWildcardFileNameToggle = () => {
+      if (!wildcardFileNameToggle)
+        return;
+      wildcardFileNameToggle.setTooltip(this.plugin.settings.enableFlexiblePathPatterns ? "" : "Enable flexible path patterns first");
+      wildcardFileNameToggle.setDisabled(!this.plugin.settings.enableFlexiblePathPatterns);
+      wildcardFileNameToggle.setValue(this.plugin.settings.enableFlexiblePathPatterns && this.plugin.settings.matchWildcardsAgainstFileNames);
+    };
     new import_obsidian5.Setting(containerEl).setName("Enable flexible path patterns").setDesc("Allows wildcard patterns like `media/**/concert*` and `media/2025-??`. Regular paths, `folder/*`, and `folder/**` stay on the fast path either way.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableFlexiblePathPatterns).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.enableFlexiblePathPatterns = value;
       galleryRuntimeSettings.enableFlexiblePathPatterns = value;
+      if (!value) {
+        this.plugin.settings.matchWildcardsAgainstFileNames = false;
+        galleryRuntimeSettings.matchWildcardsAgainstFileNames = false;
+      }
+      syncWildcardFileNameToggle();
       this.plugin.invalidateImageCache();
       yield this.plugin.saveSettings();
     })));
+    new import_obsidian5.Setting(containerEl).setName("Match wildcards against file names").setDesc("When enabled, flexible wildcard patterns match file names while the directory part only narrows the search scope. This option is available only when flexible path patterns are enabled.").addToggle((toggle) => {
+      wildcardFileNameToggle = toggle;
+      syncWildcardFileNameToggle();
+      return toggle.onChange((value) => __async(this, null, function* () {
+        if (!this.plugin.settings.enableFlexiblePathPatterns)
+          return;
+      this.plugin.settings.matchWildcardsAgainstFileNames = value;
+      galleryRuntimeSettings.matchWildcardsAgainstFileNames = value;
+      this.plugin.invalidateImageCache();
+      yield this.plugin.saveSettings();
+      }));
+    });
     containerEl.createEl("h3", { text: "Audio" });
     new import_obsidian5.Setting(containerEl).setName("Enable audio visualizations").setDesc("Enables audio waveform and spectrogram rendering inside gallery blocks. If disabled, audio cards show only metadata and cover art.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAudioVisualizations).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.enableAudioVisualizations = value;
@@ -4023,6 +4092,7 @@ var ImgGallery = class extends import_obsidian5.Plugin {
       galleryRuntimeSettings.enableAudioVisualizations = this.settings.enableAudioVisualizations;
       galleryRuntimeSettings.autoplayAudioOnOpen = this.settings.autoplayAudioOnOpen;
       galleryRuntimeSettings.enableFlexiblePathPatterns = this.settings.enableFlexiblePathPatterns;
+      galleryRuntimeSettings.matchWildcardsAgainstFileNames = this.settings.enableFlexiblePathPatterns && this.settings.matchWildcardsAgainstFileNames;
     });
   }
   saveSettings() {

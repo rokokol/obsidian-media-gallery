@@ -71,6 +71,9 @@ You can also use path patterns:
 
 - `path: media/**` — recursive search under `media/`
 - `path: media/*` — only direct children of `media/`
+- By default, flexible wildcard patterns match **file names**, while the directory part only narrows the search scope.
+- Example: `cats/cat?` matches `cats/cat1.png` and `cats/cat2.jpg`.
+- This behavior can be disabled in plugin settings if you want wildcards to match the full path instead.
 
 ### 2. Explicit Media List
 
@@ -192,6 +195,7 @@ spectrogram: true
 
 - `Enable flexible path patterns` — enables advanced wildcard patterns such as `media/**/concert*` or `media/2025-??`
 - Exact folder paths, `folder/*`, and `folder/**` stay on the fast path either way
+- `Match wildcards against file names` — when enabled, wildcard parts match file names and the directory part only scopes the search; when disabled, flexible wildcards match against the full path
 
 ### Audio
 
