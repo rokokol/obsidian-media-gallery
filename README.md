@@ -54,7 +54,9 @@ The following legacy aliases are also supported:
 ## Usage Modes
 
 
-https://github.com/user-attachments/assets/0a2131d3-a016-41b0-acf1-e8b5dbfa66a8
+
+https://github.com/user-attachments/assets/b0a7af89-3c26-4a6e-97ea-a22f0b3843ed
+
 
 
 ### 1. Folder-Based Gallery
@@ -146,7 +148,8 @@ Examples:
 
 ## Layout Modes
 
-https://github.com/user-attachments/assets/fd647f27-886d-4b86-a1f0-ab32d925f4a1
+
+https://github.com/user-attachments/assets/6f7ff6e7-17e1-46a0-bed1-d2fd9ad9118f
 
 
 ### `vertical`
