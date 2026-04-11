@@ -1,33 +1,36 @@
-const buildVertical = (
-    container: HTMLElement,
-    imagesList: {[key: string]: any},
-    settings: {[key: string]: any}
-  ) => {
-    // inject the gallery wrapper
-    const gallery = container.createEl('div')
-    gallery.addClass('grid-wrapper')
-    gallery.style.lineHeight = '0px'
-    gallery.style.columnCount = `${settings.columns}`
-    gallery.style.columnGap = `${settings.gutter}px`
+import type { App } from 'obsidian'
+import { appendPreviewMedia, applyMediaFigureAttrs } from './media-preview'
+import setCssProps from './set-css-props'
+import type { GallerySettings, MediaEntry } from './types'
 
-    // inject and style images
-    imagesList.forEach((file: {[key: string]: string}) => {
-      const figure = gallery.createEl('div')
-      figure.addClass('grid-item')
-      figure.style.marginBottom = `${settings.gutter}px`
-      figure.style.width = '100%'
-      figure.style.height = 'auto'
-      figure.style.cursor = 'pointer'
-      figure.setAttribute('data-name', file.name)
-      figure.setAttribute('data-folder', file.name)
-      figure.setAttribute('data-src', file.uri)
+const buildVertical = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings): HTMLElement => {
+  const gallery = container.createEl('div')
+  gallery.addClass('grid-wrapper')
+  gallery.addClass('media-gallery-grid-wrapper')
+  gallery.addClass('media-gallery-grid-wrapper--vertical')
+  setCssProps(gallery, {
+    '--media-gallery-columns': settings.columns,
+    '--media-gallery-gutter': `${settings.gutter}px`,
+  })
 
-      const img = figure.createEl('img')
-      img.style.borderRadius = `${settings.radius}px`
-      img.src = file.uri
+  imagesList.forEach((file) => {
+    const figure = gallery.createEl('div')
+    figure.addClass('grid-item')
+    figure.addClass('media-gallery-grid-item')
+    figure.addClass('media-gallery-grid-item--vertical')
+    setCssProps(figure, {
+      '--media-gallery-gutter': `${settings.gutter}px`,
+      display: 'inline-block',
+      'break-inside': 'avoid',
+      '-webkit-column-break-inside': 'avoid',
+      'box-sizing': 'border-box',
     })
+    applyMediaFigureAttrs(figure, file)
+    const media = appendPreviewMedia(app, figure, file, settings)
+    setCssProps(media, { 'border-radius': `${settings.radius}px` })
+  })
 
-    return gallery
+  return gallery
 }
 
 export default buildVertical

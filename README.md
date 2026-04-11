@@ -340,6 +340,21 @@ height: 280
 
 ## Development Notes
 
+### Local validation
+
+```bash
+npm ci
+npm run check:types
+npm run lint
+npm run build
+```
+
+`npm run lint` uses `eslint-plugin-obsidianmd`, which is the same family of checks recommended by the Obsidian submission bot for local preflight validation.
+
+Use `npm run check:types`, `npm run lint`, and `npm run build` before release changes. `src/` is now the source of truth for the shipped `main.js`.
+
+Path errors can be disabled in plugin settings via `Show path and empty-gallery errors` if you prefer empty blocks over inline error messages.
+
 - The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
 - The release id is `media-gallery`.
 - The current release version is `2.0.0`.

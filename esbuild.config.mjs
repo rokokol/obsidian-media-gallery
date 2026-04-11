@@ -1,6 +1,6 @@
 import esbuild from "esbuild";
+import { builtinModules } from "node:module";
 import process from "process";
-import builtins from "builtin-modules";
 
 const banner = `/* Obsidian Image Gallery Community plugin: https://github.com/lucaorio/obsidian-image-gallery */`;
 
@@ -11,7 +11,7 @@ esbuild
     banner: { js: banner },
     entryPoints: ["src/main.ts"],
     bundle: true,
-    external: ["obsidian", "electron", ...builtins],
+    external: ["obsidian", "electron", ...builtinModules],
     format: "cjs",
     watch: !prod,
     target: "es2016",

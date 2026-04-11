@@ -1,56 +1,99 @@
 import { App, MarkdownRenderChild } from 'obsidian'
-import ImgGallery from './main'
-import getImagesList from './get-imgs-list'
-import getSettings from './get-settings'
+import buildCollage from './build-collage'
 import buildHorizontal from './build-horizontal'
-import buildVertical from './build-vertical'
 import buildLightbox from './build-lightbox'
+import buildVertical from './build-vertical'
+import { applyMediaOrderingAndLimit, createMediaEntry, getCandidateMediaFiles, getImagesList, mergeMediaEntries, parseExplicitBlock } from './get-imgs-list'
+import { getDefaultGallerySettings, getSettings } from './get-settings'
+import renderError from './render-error'
+import { galleryRuntimeSettings } from './runtime-settings'
+import type ImgGallery from './main'
+import type { GallerySettings, LightGalleryInstance, MediaEntry } from './types'
 
-export class imgGalleryInit extends MarkdownRenderChild {
-  private _gallery: HTMLElement = null
-  private _lightbox: any = null
-  private _settings: {[key: string]: any} = {}
-  private _imagesList: {[key: string]: any} = {}
+export class ImgGalleryInit extends MarkdownRenderChild {
+  private gallery: HTMLElement | null = null
+  private lightbox: LightGalleryInstance | null = null
+  private settings: GallerySettings | null = null
+  private imagesList: MediaEntry[] = []
 
   constructor(
     public plugin: ImgGallery,
     public src: string,
     public container: HTMLElement,
-    public app: App
+    public app: App,
+    public sourcePath: string,
   ) {
     super(container)
   }
 
-  async onload() {
-    // parse and normalize settings
-    this._settings = getSettings(this.src, this.container)
-    this._imagesList = getImagesList(this.app, this.container, this._settings)
+  onload(): void {
+    try {
+      if (!this.src.trim()) {
+        if (galleryRuntimeSettings.showPathErrors) {
+          renderError(this.container, 'Nothing to show in this gallery block.')
+        }
+        return
+      }
 
-    // inject the pertinent kind of gallery
-    if (this._settings.type === 'horizontal') {
-      this._gallery = buildHorizontal(this.container, this._imagesList, this._settings)
-    } else if (this._settings.type === 'vertical') {
-      this._gallery = buildVertical(this.container, this._imagesList, this._settings)
+      const explicitBlock = parseExplicitBlock(this.app, this.src, this.sourcePath)
+      const explicitImages = explicitBlock.images
+      const hasExplicitPath = typeof explicitBlock.overrides.path !== 'undefined'
+
+      if (explicitImages.length || hasExplicitPath) {
+        this.settings = getDefaultGallerySettings('vertical')
+        this.settings.radius = 10
+        Object.assign(this.settings, explicitBlock.overrides)
+        if (this.settings.type === 'collage') {
+          this.settings.type = 'mosaic'
+        }
+
+        const pathImages = hasExplicitPath && this.settings.path
+          ? getCandidateMediaFiles(this.plugin, this.container, this.settings).map((file) => createMediaEntry(this.app, file))
+          : []
+
+        this.imagesList = applyMediaOrderingAndLimit(mergeMediaEntries(pathImages, explicitImages), this.settings)
+      } else {
+        this.settings = getSettings(this.src, this.container)
+        if (!this.settings.path) {
+          if (galleryRuntimeSettings.showPathErrors) {
+            renderError(this.container, 'Nothing to show in this gallery block.')
+          }
+          return
+        }
+        this.imagesList = getImagesList(this.plugin, this.container, this.settings)
+      }
+
+      if (!this.imagesList.length || !this.settings) {
+        if (galleryRuntimeSettings.showPathErrors) {
+          renderError(this.container, 'Nothing to show in this gallery block.')
+        }
+        return
+      }
+
+      if (this.settings.type === 'horizontal') {
+        this.gallery = buildHorizontal(this.app, this.container, this.imagesList, this.settings)
+      } else if (this.settings.type === 'mosaic' || this.settings.type === 'collage') {
+        this.gallery = buildCollage(this.app, this.container, this.imagesList, this.settings)
+      } else {
+        this.gallery = buildVertical(this.app, this.container, this.imagesList, this.settings)
+      }
+
+      this.lightbox = buildLightbox(this.gallery, this.imagesList, this.app)
+    } catch (error) {
+      console.error('Media Gallery', error)
     }
-
-    // initialize a lightbox
-    this._lightbox = buildLightbox(this._gallery, this._imagesList, this.app)
   }
 
-  async onunload() {
-    // todo: monitor the bug attached below (obsidian 1.1.8)
-    // https://forum.obsidian.md/t/markdown-render-childes-are-not-being-unloaded-when-switching-notes-in-the-same-tab/49681
-
-    // destroy the gallery
-    if (this._gallery) {
-      this._gallery.remove()
-      this._gallery = null
+  onunload(): void {
+    if (this.gallery) {
+      this.gallery.remove()
+      this.gallery = null
     }
 
-    // destroy the lightbox
-    if (this._lightbox) {
-      this._lightbox.destroy()
-      this._lightbox = null
+    if (this.lightbox) {
+      this.lightbox.__imgGalleryDestroyZoom?.()
+      this.lightbox.destroy()
+      this.lightbox = null
     }
   }
 }

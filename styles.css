@@ -66,6 +66,85 @@ body.theme-light .btn-glob-search {
 /* customized styles for lightgallery css                                    */
 /* ========================================================================= */
 
+.media-gallery-grid-wrapper {
+  --media-gallery-gutter: 8px;
+  --media-gallery-radius: 0px;
+  --media-gallery-height: 260px;
+  --media-gallery-columns: 3;
+}
+
+.media-gallery-grid-wrapper--horizontal {
+  display: flex;
+  flex-wrap: wrap;
+  margin-right: calc(-1 * var(--media-gallery-gutter));
+}
+
+.media-gallery-grid-wrapper--vertical {
+  line-height: 0;
+  column-count: var(--media-gallery-columns);
+  column-gap: var(--media-gallery-gutter);
+}
+
+.media-gallery-grid-item--horizontal {
+  margin: 0 var(--media-gallery-gutter) var(--media-gallery-gutter) 0;
+  width: auto;
+  height: var(--media-gallery-height);
+  border-radius: var(--media-gallery-radius);
+  flex: 1 0 auto;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.media-gallery-grid-item--vertical {
+  margin-bottom: var(--media-gallery-gutter);
+  width: 100%;
+  height: auto;
+  cursor: pointer;
+}
+
+.media-gallery-grid-image--horizontal {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.media-gallery-grid-image--vertical {
+  border-radius: var(--media-gallery-radius);
+}
+
+.media-gallery-error {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  border-radius: 6px;
+  border: 1px solid var(--background-modifier-error);
+  box-shadow: inset 4px 0 0 var(--text-error);
+  padding: 10px 14px;
+  margin: 6px 0;
+  background-color: var(--background-primary-alt);
+  color: var(--text-normal);
+  line-height: 1.45;
+}
+
+.media-gallery-error-title {
+  color: var(--text-error);
+  font-weight: var(--font-bold);
+}
+
+.media-gallery-error-message {
+  color: var(--text-normal);
+  opacity: 1;
+  white-space: normal;
+  word-break: break-word;
+}
+
+.media-gallery-hide-mobile-controls .lg-close,
+.media-gallery-hide-mobile-controls .lg-prev,
+.media-gallery-hide-mobile-controls .lg-next {
+  display: none;
+}
+
 .lg-container {
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }

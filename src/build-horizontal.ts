@@ -1,36 +1,30 @@
-const buildHorizontal = (
-    container: HTMLElement,
-    imagesList: {[key: string]: any},
-    settings: {[key: string]: any}
-  ) => {
-  // inject the gallery wrapper
+import type { App } from 'obsidian'
+import { appendPreviewMedia, applyMediaFigureAttrs } from './media-preview'
+import setCssProps from './set-css-props'
+import type { GallerySettings, MediaEntry } from './types'
+
+const buildHorizontal = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings): HTMLElement => {
   const gallery = container.createEl('div')
   gallery.addClass('grid-wrapper')
-  gallery.style.display = 'flex'
-  gallery.style.flexWrap = 'wrap'
-  gallery.style.marginRight = `-${settings.gutter}px`
+  gallery.addClass('media-gallery-grid-wrapper')
+  gallery.addClass('media-gallery-grid-wrapper--horizontal')
+  setCssProps(gallery, {
+    '--media-gallery-gutter': `${settings.gutter}px`,
+  })
 
-  // inject and style images
-  imagesList.forEach((file: {[key: string]: string}) => {
+  imagesList.forEach((file) => {
     const figure = gallery.createEl('figure')
     figure.addClass('grid-item')
-    figure.style.margin = `0px ${settings.gutter}px ${settings.gutter}px 0px`
-    figure.style.width = 'auto'
-    figure.style.height = `${settings.height}px`
-    figure.style.borderRadius = `${settings.radius}px`
-    figure.style.flex = '1 0 auto'
-    figure.style.overflow = 'hidden'
-    figure.style.cursor = 'pointer'
-    figure.setAttribute('data-name', file.name)
-    figure.setAttribute('data-folder', file.name)
-    figure.setAttribute('data-src', file.uri)
-
-    const img = figure.createEl('img')
-    img.style.objectFit = 'cover'
-    img.style.width = '100%'
-    img.style.height = '100%'
-    img.style.borderRadius = '0px'
-    img.src = file.uri
+    figure.addClass('media-gallery-grid-item')
+    figure.addClass('media-gallery-grid-item--horizontal')
+    setCssProps(figure, {
+      '--media-gallery-gutter': `${settings.gutter}px`,
+      '--media-gallery-height': `${settings.height}px`,
+      '--media-gallery-radius': `${settings.radius}px`,
+    })
+    applyMediaFigureAttrs(figure, file)
+    const media = appendPreviewMedia(app, figure, file, settings)
+    setCssProps(media, { 'border-radius': '0px' })
   })
 
   return gallery

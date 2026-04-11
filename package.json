@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
+    "check:types": "tsc -noEmit -skipLibCheck",
+    "lint": "eslint src package.json --no-warn-ignored",
     "version": "node version-bump.mjs && git add manifest.json versions.json"
   },
   "author": "Luca Orio",
@@ -25,13 +27,16 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.5",
     "@types/node": "^16.11.6",
-    "@typescript-eslint/eslint-plugin": "^5.2.0",
-    "@typescript-eslint/parser": "^5.2.0",
-    "builtin-modules": "^3.2.0",
+    "@eslint/js": "^9.39.1",
+    "@eslint/json": "^0.14.0",
+    "@typescript-eslint/utils": "^8.46.2",
     "esbuild": "0.13.12",
+    "eslint": "^9.39.1",
+    "eslint-plugin-obsidianmd": "^0.1.9",
     "lightgallery": "^2.7.0",
     "obsidian": "latest",
     "tslib": "2.3.1",
-    "typescript": "^4.4.4"
+    "typescript": "^4.4.4",
+    "typescript-eslint": "^8.46.2"
   }
 }

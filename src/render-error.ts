@@ -1,13 +1,12 @@
-const renderError = (container: HTMLElement, error: string) => {
-  // render a custom error and style it
+const renderError = (container: HTMLElement, error: string): void => {
   const wrapper = container.createEl('div')
-  wrapper.createEl('p', {text: `(Error) Image Gallery: ${error}`});
+  wrapper.addClass('media-gallery-error')
 
-  wrapper.style.borderRadius = '4px'
-  wrapper.style.padding = '2px 16px'
-  wrapper.style.backgroundColor = '#e50914'
-  wrapper.style.color = '#fff'
-  wrapper.style.fontWeight = 'bolder'
+  const title = wrapper.createEl('div', { text: 'Media gallery error' })
+  title.addClass('media-gallery-error-title')
+
+  const description = wrapper.createEl('div', { text: error })
+  description.addClass('media-gallery-error-message')
 }
 
 export default renderError
