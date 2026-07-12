@@ -1,8 +1,55 @@
-import type { App } from 'obsidian'
-import { getAudioArtworkUrl, getAudioMetadata, getAudioMimeType, getAudioSpectrogram, getAudioSubtitle, getAudioWaveform, getMediaDisplayName, getVideoMimeType } from './get-imgs-list'
+import { Platform } from 'obsidian'
+import type { App, Component } from 'obsidian'
+import { getAudioArtworkUrl, getAudioMetadata, getAudioSpectrogram, getAudioSubtitle, getAudioWaveform, getMediaDisplayName, getVideoMimeType } from './get-imgs-list'
 import { galleryRuntimeSettings } from './runtime-settings'
 import setCssProps from './set-css-props'
 import type { GallerySettings, MediaEntry } from './types'
+
+// Media fragment appended to a video src so mobile browsers paint the first
+// frame as a still poster instead of a blank/white element with native chrome.
+const VIDEO_POSTER_FRAGMENT = '#t=0.1'
+// Share of a preview that must be visible before mobile autoplay kicks in.
+const MOBILE_AUTOPLAY_VISIBILITY = 0.25
+
+const logMediaError = (error: unknown): void => {
+  console.error('Media Gallery', error)
+}
+
+// Skeleton placeholder class kept on the figure until the media has painted.
+const LOADING_CLASS = 'media-gallery-loading'
+
+const trackMediaLoading = (figure: HTMLElement, media: HTMLElement, readyEvent: string): void => {
+  figure.addClass(LOADING_CLASS)
+  const clear = (): void => {
+    figure.removeClass(LOADING_CLASS)
+  }
+  media.addEventListener(readyEvent, clear, { once: true })
+  media.addEventListener('error', clear, { once: true })
+}
+
+// One IntersectionObserver per gallery: on mobile there is no hover, so visible
+// videos autoplay (muted, looped) and off-screen ones pause to save battery and
+// bandwidth. Returns null on desktop where hover-to-play is used instead.
+export const createVideoAutoplayObserver = (component: Component): IntersectionObserver | null => {
+  if (!Platform.isMobile) return null
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        const video = entry.target as HTMLVideoElement
+        if (entry.isIntersecting) {
+          void video.play().catch(() => {})
+        } else {
+          video.pause()
+        }
+      })
+    },
+    { threshold: MOBILE_AUTOPLAY_VISIBILITY },
+  )
+
+  component.register(() => { observer.disconnect(); })
+  return observer
+}
 
 export const applyMediaFigureAttrs = (figure: HTMLElement, file: MediaEntry): void => {
   figure.setAttribute('data-name', file.name)
@@ -16,7 +63,7 @@ export const applyMediaFigureAttrs = (figure: HTMLElement, file: MediaEntry): vo
 
 const renderWaveform = (container: HTMLElement, values: number[] | null): void => {
   container.empty()
-  if (!values || !values.length) return
+  if (!values?.length) return
 
   values.forEach((value) => {
     const bar = container.createEl('span', { cls: 'img-gallery-audio-waveform-bar' })
@@ -28,7 +75,7 @@ const renderWaveform = (container: HTMLElement, values: number[] | null): void =
 
 const renderSpectrogram = (container: HTMLElement, values: number[][] | null): void => {
   container.empty()
-  if (!values || !values.length) return
+  if (!values?.length) return
 
   const canvas = container.createEl('canvas', { cls: 'img-gallery-audio-spectrogram-canvas' })
   const columns = values.length
@@ -76,36 +123,40 @@ const appendAudioVisualization = (app: App, meta: HTMLElement, file: MediaEntry,
 
   if (settings.spectrogram) {
     const spectrogram = meta.createEl('div', { cls: 'img-gallery-audio-spectrogram' })
-    void getAudioSpectrogram(app, file, true).then((values) => {
-      renderSpectrogram(spectrogram, values)
-    })
+    void getAudioSpectrogram(app, file, true)
+      .then((values) => { renderSpectrogram(spectrogram, values); })
+      .catch(logMediaError)
     return
   }
 
   if (!settings.waveform) return
 
   const waveform = meta.createEl('div', { cls: 'img-gallery-audio-waveform' })
-  void getAudioWaveform(app, file, true).then((values) => {
-    renderWaveform(waveform, values)
-  })
+  void getAudioWaveform(app, file, true)
+    .then((values) => { renderWaveform(waveform, values); })
+    .catch(logMediaError)
 }
 
 const fillAudioPreviewMetadata = (app: App, file: MediaEntry, nameEl: HTMLElement, subtitleEl: HTMLElement): void => {
-  void getAudioMetadata(app, file).then((metadata) => {
-    nameEl.setText(metadata?.title || getMediaDisplayName(file))
-    subtitleEl.setText(getAudioSubtitle(metadata))
-    subtitleEl.toggleClass('is-empty', !subtitleEl.getText())
-  })
+  void getAudioMetadata(app, file)
+    .then((metadata) => {
+      nameEl.setText(metadata?.title || getMediaDisplayName(file))
+      subtitleEl.setText(getAudioSubtitle(metadata))
+      subtitleEl.toggleClass('is-empty', !subtitleEl.getText())
+    })
+    .catch(logMediaError)
 }
 
 const fillAudioPreviewArtwork = (app: App, file: MediaEntry, cover: HTMLElement): void => {
-  void getAudioArtworkUrl(app, file).then((artworkUrl) => {
-    if (!artworkUrl) return
-    cover.empty()
-    const img = cover.createEl('img', { cls: 'img-gallery-audio-cover-image' })
-    img.src = artworkUrl
-    img.alt = file.name
-  })
+  void getAudioArtworkUrl(app, file)
+    .then((artworkUrl) => {
+      if (!artworkUrl) return
+      cover.empty()
+      const img = cover.createEl('img', { cls: 'img-gallery-audio-cover-image' })
+      img.src = artworkUrl
+      img.alt = file.name
+    })
+    .catch(logMediaError)
 }
 
 const appendAudioPreview = (app: App, figure: HTMLElement, file: MediaEntry, settings: GallerySettings): HTMLElement => {
@@ -125,7 +176,14 @@ const appendAudioPreview = (app: App, figure: HTMLElement, file: MediaEntry, set
   return audioCard
 }
 
-export const appendPreviewMedia = (app: App, figure: HTMLElement, file: MediaEntry, settings: GallerySettings): HTMLElement => {
+export const appendPreviewMedia = (
+  app: App,
+  figure: HTMLElement,
+  file: MediaEntry,
+  settings: GallerySettings,
+  component: Component,
+  videoObserver: IntersectionObserver | null,
+): HTMLElement => {
   if (file.kind === 'video') {
     figure.addClass('img-gallery-video-item')
     const video = figure.createEl('video')
@@ -133,7 +191,9 @@ export const appendPreviewMedia = (app: App, figure: HTMLElement, file: MediaEnt
     video.loop = true
     video.playsInline = true
     video.preload = 'metadata'
-    video.src = file.uri
+    // The #t fragment forces a decoded first frame so the preview never shows a
+    // blank element (the root cause of the mobile "white screen" bug).
+    video.src = `${file.uri}${VIDEO_POSTER_FRAGMENT}`
     video.setAttribute('data-mime', getVideoMimeType(file.path))
     setCssProps(video, {
       width: '100%',
@@ -142,13 +202,21 @@ export const appendPreviewMedia = (app: App, figure: HTMLElement, file: MediaEnt
       'object-position': 'center center',
       display: 'block',
     })
-    video.addEventListener('mouseenter', () => {
-      void video.play().catch(() => {})
-    })
-    video.addEventListener('mouseleave', () => {
-      video.pause()
-      video.currentTime = 0
-    })
+
+    trackMediaLoading(figure, video, 'loadeddata')
+
+    if (Platform.isMobile) {
+      // No hover on touch devices: autoplay while visible via the shared observer.
+      videoObserver?.observe(video)
+    } else {
+      component.registerDomEvent(video, 'mouseenter', () => {
+        void video.play().catch(() => {})
+      })
+      component.registerDomEvent(video, 'mouseleave', () => {
+        video.pause()
+        video.currentTime = 0
+      })
+    }
     return video
   }
 
@@ -165,7 +233,6 @@ export const appendPreviewMedia = (app: App, figure: HTMLElement, file: MediaEnt
     'object-position': 'center center',
     display: 'block',
   })
+  trackMediaLoading(figure, img, 'load')
   return img
 }
-
-export const getResolvedAudioMimeType = getAudioMimeType

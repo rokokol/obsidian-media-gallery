@@ -61,7 +61,7 @@ var __async = (__this, __arguments, generator) => {
 __export(exports, {
   default: () => ImgGallery
 });
-var import_obsidian5 = __toModule(require("obsidian"));
+var import_obsidian6 = __toModule(require("obsidian"));
 
 // src/build-lightbox.ts
 var import_obsidian2 = __toModule(require("obsidian"));
@@ -2652,10 +2652,44 @@ var DEFAULT_PLUGIN_SETTINGS = {
 };
 var galleryRuntimeSettings = __spreadValues({}, DEFAULT_PLUGIN_SETTINGS);
 
+// src/utils.ts
+var isRecord = (value) => {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+};
+var normalizeListSetting = (value) => {
+  if (Array.isArray(value)) {
+    return value.map((item) => String(item).trim()).filter(Boolean);
+  }
+  if (typeof value !== "string") {
+    return [];
+  }
+  const normalized = value.trim().replace(/^\[(.*)\]$/, "$1");
+  return normalized.split(",").map((item) => item.trim()).filter(Boolean);
+};
+var normalizeSeedSetting = (value) => {
+  if (value === null || typeof value === "undefined") {
+    return void 0;
+  }
+  if (typeof value === "string") {
+    return value.trim() || void 0;
+  }
+  if (typeof value === "number" || typeof value === "boolean") {
+    return String(value).trim() || void 0;
+  }
+  return void 0;
+};
+
 // src/get-imgs-list.ts
 var validImageExtensions = ["jpeg", "jpg", "gif", "png", "webp", "tiff", "tif", "bmp", "svg", "avif"];
 var validVideoExtensions = ["mp4", "webm", "mov", "m4v", "ogv"];
 var validAudioExtensions = ["mp3", "m4a", "wav", "ogg", "oga", "flac", "aac", "opus"];
+var WAVEFORM_BARS = 40;
+var WAVEFORM_CONTRAST_POWER = 0.75;
+var SPECTROGRAM_SLICES = 32;
+var SPECTROGRAM_BANDS = 14;
+var SPECTROGRAM_WINDOW_SIZE = 384;
+var SPECTROGRAM_MAX_BIN = 88;
+var SPECTROGRAM_CONTRAST_POWER = 0.36;
 var audioArtworkCache = new Map();
 var audioMetadataCache = new Map();
 var audioWaveformCache = new Map();
@@ -2666,7 +2700,11 @@ var clearAudioCaches = () => {
   audioMetadataCache.clear();
   audioWaveformCache.clear();
   audioSpectrogramCache.clear();
-  audioObjectUrls.forEach((url) => URL.revokeObjectURL(url));
+};
+var revokeAudioObjectUrls = () => {
+  audioObjectUrls.forEach((url) => {
+    URL.revokeObjectURL(url);
+  });
   audioObjectUrls.clear();
 };
 var isImageExtension = (extension) => validImageExtensions.includes(extension.toLowerCase());
@@ -2862,7 +2900,7 @@ var buildWaveformBars = (arrayBuffer) => __async(void 0, null, function* () {
   try {
     const audioBuffer = yield ctx.decodeAudioData(arrayBuffer.slice(0));
     const channel = audioBuffer.getChannelData(0);
-    const bars = 40;
+    const bars = WAVEFORM_BARS;
     const blockSize = Math.max(1, Math.floor(channel.length / bars));
     const values = [];
     let maxValue = 0;
@@ -2880,7 +2918,7 @@ var buildWaveformBars = (arrayBuffer) => __async(void 0, null, function* () {
     }
     if (maxValue <= 0)
       return values;
-    return values.map((value) => Math.pow(value / maxValue, 0.75));
+    return values.map((value) => Math.pow(value / maxValue, WAVEFORM_CONTRAST_POWER));
   } catch (e) {
     return null;
   } finally {
@@ -2925,10 +2963,10 @@ var buildSpectrogramData = (arrayBuffer) => __async(void 0, null, function* () {
   try {
     const audioBuffer = yield ctx.decodeAudioData(arrayBuffer.slice(0));
     const channel = audioBuffer.getChannelData(0);
-    const slices = 32;
-    const bands = 14;
-    const windowSize = 384;
-    const maxBin = 88;
+    const slices = SPECTROGRAM_SLICES;
+    const bands = SPECTROGRAM_BANDS;
+    const windowSize = SPECTROGRAM_WINDOW_SIZE;
+    const maxBin = SPECTROGRAM_MAX_BIN;
     const sliceSize = Math.max(windowSize, Math.floor(channel.length / slices));
     const data = [];
     const centerBins = Array.from({ length: bands }, (_, band) => {
@@ -2951,7 +2989,7 @@ var buildSpectrogramData = (arrayBuffer) => __async(void 0, null, function* () {
       return data;
     return data.map((row, rowIndex) => row.map((value, bandIndex) => {
       const normalized = value / maxEnergy;
-      const lifted = Math.pow(normalized, 0.36);
+      const lifted = Math.pow(normalized, SPECTROGRAM_CONTRAST_POWER);
       const bandBias = 0.86 + bandIndex / Math.max(1, bands - 1) * 0.44;
       const timeBias = 0.92 + 0.08 * Math.sin(rowIndex / Math.max(1, slices - 1) * Math.PI);
       return Math.max(0.06, Math.min(1, lifted * bandBias * timeBias));
@@ -2982,31 +3020,14 @@ var isSearchEverywherePath = (path) => {
   return !path || path === "." || path === "/" || path === "*" || path === "**";
 };
 var hasWildcardPattern = (path) => typeof path === "string" && /[*?]/.test(path);
-var isRecursiveGlobPath = (path) => typeof path === "string" && /\/\*\*$/.test(path);
-var isShallowGlobPath = (path) => typeof path === "string" && /\/\*$/.test(path) && !isRecursiveGlobPath(path);
+var isRecursiveGlobPath = (path) => typeof path === "string" && path.endsWith("/**");
+var isShallowGlobPath = (path) => typeof path === "string" && path.endsWith("/*") && !isRecursiveGlobPath(path);
 var normalizeMediaSearchPath = (path) => {
   if (isRecursiveGlobPath(path))
     return (0, import_obsidian.normalizePath)(path.slice(0, -3));
   if (isShallowGlobPath(path))
     return (0, import_obsidian.normalizePath)(path.slice(0, -2));
   return (0, import_obsidian.normalizePath)(path);
-};
-var normalizeListSetting = (value) => {
-  if (Array.isArray(value))
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  if (typeof value !== "string")
-    return [];
-  const normalized = value.trim().replace(/^\[(.*)\]$/, "$1");
-  return normalized.split(",").map((item) => item.trim()).filter(Boolean);
-};
-var normalizeSeedSetting = (value) => {
-  if (value === null || typeof value === "undefined")
-    return void 0;
-  if (typeof value === "string")
-    return value.trim() || void 0;
-  if (typeof value === "number" || typeof value === "boolean")
-    return String(value).trim() || void 0;
-  return void 0;
 };
 var hashSeed = (seed) => {
   let hash = 2166136261;
@@ -3041,7 +3062,7 @@ var createGlobRegex = (pattern, allowSlash) => {
   return new RegExp(regexPattern);
 };
 var getPathWithoutExtension = (filePath) => {
-  const normalizedPath = `${filePath}`.split("?")[0].split("#")[0];
+  const normalizedPath = filePath.split("?")[0].split("#")[0];
   const lastSlashIndex = normalizedPath.lastIndexOf("/");
   const lastDotIndex = normalizedPath.lastIndexOf(".");
   if (lastDotIndex <= lastSlashIndex)
@@ -3049,7 +3070,7 @@ var getPathWithoutExtension = (filePath) => {
   return normalizedPath.slice(0, lastDotIndex);
 };
 var getFileName = (filePath) => {
-  const normalizedPath = `${filePath}`.split("?")[0].split("#")[0];
+  const normalizedPath = filePath.split("?")[0].split("#")[0];
   return normalizedPath.split("/").pop() || normalizedPath;
 };
 var getFileNameWithoutExtension = (filePath) => getFileName(getPathWithoutExtension(filePath));
@@ -3075,7 +3096,7 @@ var getPatternScopePath = (pattern) => {
 var createPathPatternMatcher = (pattern, allowFlexible) => {
   if (!pattern)
     return () => false;
-  const normalizedPattern = `${pattern}`.trim().replace(/\\/g, "/").replace(/\/+/g, "/");
+  const normalizedPattern = pattern.trim().replace(/\\/g, "/").replace(/\/+/g, "/");
   if (isSearchEverywherePath(normalizedPattern))
     return () => true;
   if (isRecursiveGlobPath(normalizedPattern)) {
@@ -3094,7 +3115,7 @@ var createPathPatternMatcher = (pattern, allowFlexible) => {
       const dirRegex = dirPattern ? createGlobRegex(dirPattern, false) : null;
       const fileRegex = createGlobRegex(filePattern, true);
       return (filePath) => {
-        const normalizedFilePath = `${filePath}`.split("?")[0].split("#")[0];
+        const normalizedFilePath = filePath.split("?")[0].split("#")[0];
         const dirPath = normalizedFilePath.split("/").slice(0, -1).join("/");
         if (dirRegex && !dirRegex.test(dirPath))
           return false;
@@ -3179,8 +3200,8 @@ var parseExplicitMediaList = (app, src, sourcePath) => {
   lines.forEach((line) => {
     var _a, _b;
     let candidate = null;
-    const wikiMatch = line.match(/^!?\[\[(.+?)\]\]$/);
-    const markdownMatch = line.match(/^!\[[^\]]*\]\((.+?)\)$/);
+    const wikiMatch = /^!?\[\[(.+?)\]\]$/.exec(line);
+    const markdownMatch = /^!\[[^\]]*\]\((.+?)\)$/.exec(line);
     if (wikiMatch) {
       candidate = resolveMediaFromLink(app, wikiMatch[1], sourcePath);
     } else if (markdownMatch) {
@@ -3229,7 +3250,7 @@ var parseExplicitBlock = (app, src, sourcePath) => {
   const mediaLines = [];
   const knownKeys = new Set(["type", "radius", "gutter", "sortby", "sort", "mobile", "columns", "height", "path", "fit", "waveform", "spectrogram", "extensions", "exclude", "limit", "seed"]);
   lines.forEach((line) => {
-    const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/);
+    const match = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/.exec(line);
     if (!match) {
       mediaLines.push(line);
       return;
@@ -3353,47 +3374,63 @@ var set_css_props_default = setCssProps;
 // src/build-lightbox.ts
 var videoModalSingleton = null;
 var audioModalSingleton = null;
-var createVideoModal = () => {
-  let escHandler = null;
-  const modal = document.body.createEl("div", { cls: "img-gallery-video-modal img-gallery-video-modal-hidden" });
-  const content = modal.createEl("div", { cls: "img-gallery-video-modal-content" });
-  const title = content.createEl("div", { cls: "img-gallery-video-modal-title" });
-  const close = content.createEl("button", { cls: "img-gallery-video-modal-close", text: "\xD7" });
-  const video = content.createEl("video", { cls: "img-gallery-video-modal-player" });
-  video.controls = true;
-  video.playsInline = true;
-  video.preload = "metadata";
-  const closeModal = () => {
-    video.pause();
-    video.removeAttribute("src");
-    video.load();
-    modal.addClass("img-gallery-video-modal-hidden");
+var logMediaError = (error) => {
+  console.error("Media Gallery", error);
+};
+var createMediaModalShell = (kind, onClose) => {
+  const modalClass = `img-gallery-${kind}-modal`;
+  const hiddenClass = `${modalClass}-hidden`;
+  const modal = document.body.createEl("div", { cls: `${modalClass} ${hiddenClass}` });
+  const content = modal.createEl("div", { cls: `${modalClass}-content` });
+  const close = content.createEl("button", { cls: `${modalClass}-close`, text: "\xD7" });
+  const escHandler = (event) => {
+    if (event.key === "Escape" && !modal.hasClass(hiddenClass))
+      onClose();
   };
   modal.addEventListener("click", (event) => {
     if (event.target === modal)
-      closeModal();
+      onClose();
   });
-  close.addEventListener("click", closeModal);
-  escHandler = (event) => {
-    if (event.key === "Escape" && !modal.hasClass("img-gallery-video-modal-hidden")) {
-      closeModal();
+  close.addEventListener("click", onClose);
+  document.addEventListener("keydown", escHandler);
+  return {
+    modal,
+    content,
+    hiddenClass,
+    removeEscListener: () => {
+      document.removeEventListener("keydown", escHandler);
     }
   };
-  document.addEventListener("keydown", escHandler);
+};
+var createVideoModal = () => {
+  let close = () => {
+  };
+  const shell = createMediaModalShell("video", () => {
+    close();
+  });
+  const title = shell.content.createEl("div", { cls: "img-gallery-video-modal-title" });
+  const video = shell.content.createEl("video", { cls: "img-gallery-video-modal-player" });
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = "metadata";
+  close = () => {
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    shell.modal.addClass(shell.hiddenClass);
+  };
   return {
     open: (file) => {
       title.setText(file.name);
       video.src = file.uri;
-      modal.removeClass("img-gallery-video-modal-hidden");
+      shell.modal.removeClass(shell.hiddenClass);
       void video.play().catch(() => {
       });
     },
     destroy: () => {
-      if (escHandler) {
-        document.removeEventListener("keydown", escHandler);
-      }
-      closeModal();
-      modal.remove();
+      shell.removeEscListener();
+      close();
+      shell.modal.remove();
     }
   };
 };
@@ -3404,36 +3441,26 @@ var getVideoModal = () => {
   return videoModalSingleton;
 };
 var createAudioModal = (app) => {
-  let escHandler = null;
   let currentPath = null;
-  const modal = document.body.createEl("div", { cls: "img-gallery-audio-modal img-gallery-audio-modal-hidden" });
-  const content = modal.createEl("div", { cls: "img-gallery-audio-modal-content" });
-  const title = content.createEl("div", { cls: "img-gallery-audio-modal-title" });
-  const subtitle = content.createEl("div", { cls: "img-gallery-audio-modal-subtitle is-empty" });
-  const close = content.createEl("button", { cls: "img-gallery-audio-modal-close", text: "\xD7" });
-  const cover = content.createEl("div", { cls: "img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty" });
-  const audio = content.createEl("audio", { cls: "img-gallery-audio-modal-player" });
+  let close = () => {
+  };
+  const shell = createMediaModalShell("audio", () => {
+    close();
+  });
+  const title = shell.content.createEl("div", { cls: "img-gallery-audio-modal-title" });
+  const subtitle = shell.content.createEl("div", { cls: "img-gallery-audio-modal-subtitle is-empty" });
+  const cover = shell.content.createEl("div", { cls: "img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty" });
+  const audio = shell.content.createEl("audio", { cls: "img-gallery-audio-modal-player" });
   audio.controls = true;
   audio.preload = "metadata";
-  const closeModal = () => {
+  close = () => {
     currentPath = null;
     audio.pause();
     audio.removeAttribute("src");
     audio.removeAttribute("type");
     audio.load();
-    modal.addClass("img-gallery-audio-modal-hidden");
+    shell.modal.addClass(shell.hiddenClass);
   };
-  modal.addEventListener("click", (event) => {
-    if (event.target === modal)
-      closeModal();
-  });
-  close.addEventListener("click", closeModal);
-  escHandler = (event) => {
-    if (event.key === "Escape" && !modal.hasClass("img-gallery-audio-modal-hidden")) {
-      closeModal();
-    }
-  };
-  document.addEventListener("keydown", escHandler);
   return {
     open: (file) => {
       currentPath = file.path;
@@ -3452,7 +3479,7 @@ var createAudioModal = (app) => {
         title.setText((metadata == null ? void 0 : metadata.title) || getMediaDisplayName(file));
         subtitle.setText(getAudioSubtitle(metadata));
         subtitle.toggleClass("is-empty", !subtitle.getText());
-      });
+      }).catch(logMediaError);
       void getAudioArtworkUrl(app, file).then((artworkUrl) => {
         if (currentPath !== activePath || !artworkUrl)
           return;
@@ -3460,19 +3487,17 @@ var createAudioModal = (app) => {
         const img = cover.createEl("img", { cls: "img-gallery-audio-modal-cover-image" });
         img.src = artworkUrl;
         img.alt = file.name;
-      });
-      modal.removeClass("img-gallery-audio-modal-hidden");
+      }).catch(logMediaError);
+      shell.modal.removeClass(shell.hiddenClass);
       if (galleryRuntimeSettings.autoplayAudioOnOpen) {
         void audio.play().catch(() => {
         });
       }
     },
     destroy: () => {
-      if (escHandler) {
-        document.removeEventListener("keydown", escHandler);
-      }
-      closeModal();
-      modal.remove();
+      shell.removeEscListener();
+      close();
+      shell.modal.remove();
     }
   };
 };
@@ -3627,8 +3652,8 @@ var installCustomZoom = (galleryLightbox) => {
     document.removeEventListener("click", handleClick, true);
   };
 };
-var globalSearchBtn = (gallery, imagesList, app) => {
-  gallery.addEventListener("lgInit", (event) => {
+var globalSearchBtn = (gallery, imagesList, app, component) => {
+  const onInit = (event) => {
     const galleryEvent = event;
     const galleryInstance = galleryEvent.detail.instance;
     const btn = '<button type="button" id="btn-glob-search" class="lg-icon btn-glob-search"></button>';
@@ -3646,12 +3671,16 @@ var globalSearchBtn = (gallery, imagesList, app) => {
       }
       galleryInstance.closeGallery();
     });
+  };
+  gallery.addEventListener("lgInit", onInit);
+  component.register(() => {
+    gallery.removeEventListener("lgInit", onInit);
   });
 };
-var buildLightbox = (gallery, imagesList, app) => {
+var buildLightbox = (gallery, imagesList, app, component) => {
   const lightboxImages = imagesList.filter((file) => file.kind === "image");
   if (import_obsidian2.Platform.isDesktop && lightboxImages.length) {
-    globalSearchBtn(gallery, lightboxImages, app);
+    globalSearchBtn(gallery, lightboxImages, app, component);
   }
   const galleryLightbox = lightgallery_es5_default(gallery, {
     plugins: [lg_thumbnail_es5_default],
@@ -3672,7 +3701,7 @@ var buildLightbox = (gallery, imagesList, app) => {
   }
   galleryLightbox.__imgGalleryDestroyZoom = destroyZoom;
   gallery.querySelectorAll('.grid-item[data-media-kind="video"]').forEach((item) => {
-    item.addEventListener("click", () => {
+    component.registerDomEvent(item, "click", () => {
       const itemPath = item.getAttribute("data-path");
       const matched = imagesList.find((file) => file.kind === "video" && file.path === itemPath);
       if (matched) {
@@ -3681,7 +3710,7 @@ var buildLightbox = (gallery, imagesList, app) => {
     });
   });
   gallery.querySelectorAll('.grid-item[data-media-kind="audio"]').forEach((item) => {
-    item.addEventListener("click", () => {
+    component.registerDomEvent(item, "click", () => {
       const itemPath = item.getAttribute("data-path");
       const matched = imagesList.find((file) => file.kind === "audio" && file.path === itemPath);
       if (matched) {
@@ -3694,9 +3723,43 @@ var buildLightbox = (gallery, imagesList, app) => {
 var build_lightbox_default = buildLightbox;
 
 // src/init.ts
-var import_obsidian4 = __toModule(require("obsidian"));
+var import_obsidian5 = __toModule(require("obsidian"));
 
 // src/media-preview.ts
+var import_obsidian3 = __toModule(require("obsidian"));
+var VIDEO_POSTER_FRAGMENT = "#t=0.1";
+var MOBILE_AUTOPLAY_VISIBILITY = 0.25;
+var logMediaError2 = (error) => {
+  console.error("Media Gallery", error);
+};
+var LOADING_CLASS = "media-gallery-loading";
+var trackMediaLoading = (figure, media, readyEvent) => {
+  figure.addClass(LOADING_CLASS);
+  const clear = () => {
+    figure.removeClass(LOADING_CLASS);
+  };
+  media.addEventListener(readyEvent, clear, { once: true });
+  media.addEventListener("error", clear, { once: true });
+};
+var createVideoAutoplayObserver = (component) => {
+  if (!import_obsidian3.Platform.isMobile)
+    return null;
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry) => {
+      const video = entry.target;
+      if (entry.isIntersecting) {
+        void video.play().catch(() => {
+        });
+      } else {
+        video.pause();
+      }
+    });
+  }, { threshold: MOBILE_AUTOPLAY_VISIBILITY });
+  component.register(() => {
+    observer.disconnect();
+  });
+  return observer;
+};
 var applyMediaFigureAttrs = (figure, file) => {
   figure.setAttribute("data-name", file.name);
   figure.setAttribute("data-folder", file.folder);
@@ -3708,7 +3771,7 @@ var applyMediaFigureAttrs = (figure, file) => {
 };
 var renderWaveform = (container, values) => {
   container.empty();
-  if (!values || !values.length)
+  if (!(values == null ? void 0 : values.length))
     return;
   values.forEach((value) => {
     const bar = container.createEl("span", { cls: "img-gallery-audio-waveform-bar" });
@@ -3719,7 +3782,7 @@ var renderWaveform = (container, values) => {
 };
 var renderSpectrogram = (container, values) => {
   container.empty();
-  if (!values || !values.length)
+  if (!(values == null ? void 0 : values.length))
     return;
   const canvas = container.createEl("canvas", { cls: "img-gallery-audio-spectrogram-canvas" });
   const columns = values.length;
@@ -3763,7 +3826,7 @@ var appendAudioVisualization = (app, meta, file, settings) => {
     const spectrogram = meta.createEl("div", { cls: "img-gallery-audio-spectrogram" });
     void getAudioSpectrogram(app, file, true).then((values) => {
       renderSpectrogram(spectrogram, values);
-    });
+    }).catch(logMediaError2);
     return;
   }
   if (!settings.waveform)
@@ -3771,14 +3834,14 @@ var appendAudioVisualization = (app, meta, file, settings) => {
   const waveform = meta.createEl("div", { cls: "img-gallery-audio-waveform" });
   void getAudioWaveform(app, file, true).then((values) => {
     renderWaveform(waveform, values);
-  });
+  }).catch(logMediaError2);
 };
 var fillAudioPreviewMetadata = (app, file, nameEl, subtitleEl) => {
   void getAudioMetadata(app, file).then((metadata) => {
     nameEl.setText((metadata == null ? void 0 : metadata.title) || getMediaDisplayName(file));
     subtitleEl.setText(getAudioSubtitle(metadata));
     subtitleEl.toggleClass("is-empty", !subtitleEl.getText());
-  });
+  }).catch(logMediaError2);
 };
 var fillAudioPreviewArtwork = (app, file, cover) => {
   void getAudioArtworkUrl(app, file).then((artworkUrl) => {
@@ -3788,7 +3851,7 @@ var fillAudioPreviewArtwork = (app, file, cover) => {
     const img = cover.createEl("img", { cls: "img-gallery-audio-cover-image" });
     img.src = artworkUrl;
     img.alt = file.name;
-  });
+  }).catch(logMediaError2);
 };
 var appendAudioPreview = (app, figure, file, settings) => {
   figure.addClass("img-gallery-audio-item");
@@ -3804,7 +3867,7 @@ var appendAudioPreview = (app, figure, file, settings) => {
   fillAudioPreviewArtwork(app, file, cover);
   return audioCard;
 };
-var appendPreviewMedia = (app, figure, file, settings) => {
+var appendPreviewMedia = (app, figure, file, settings, component, videoObserver) => {
   if (file.kind === "video") {
     figure.addClass("img-gallery-video-item");
     const video = figure.createEl("video");
@@ -3812,7 +3875,7 @@ var appendPreviewMedia = (app, figure, file, settings) => {
     video.loop = true;
     video.playsInline = true;
     video.preload = "metadata";
-    video.src = file.uri;
+    video.src = `${file.uri}${VIDEO_POSTER_FRAGMENT}`;
     video.setAttribute("data-mime", getVideoMimeType(file.path));
     set_css_props_default(video, {
       width: "100%",
@@ -3821,14 +3884,19 @@ var appendPreviewMedia = (app, figure, file, settings) => {
       "object-position": "center center",
       display: "block"
     });
-    video.addEventListener("mouseenter", () => {
-      void video.play().catch(() => {
+    trackMediaLoading(figure, video, "loadeddata");
+    if (import_obsidian3.Platform.isMobile) {
+      videoObserver == null ? void 0 : videoObserver.observe(video);
+    } else {
+      component.registerDomEvent(video, "mouseenter", () => {
+        void video.play().catch(() => {
+        });
       });
-    });
-    video.addEventListener("mouseleave", () => {
-      video.pause();
-      video.currentTime = 0;
-    });
+      component.registerDomEvent(video, "mouseleave", () => {
+        video.pause();
+        video.currentTime = 0;
+      });
+    }
     return video;
   }
   if (file.kind === "audio") {
@@ -3843,6 +3911,7 @@ var appendPreviewMedia = (app, figure, file, settings) => {
     "object-position": "center center",
     display: "block"
   });
+  trackMediaLoading(figure, img, "load");
   return img;
 };
 
@@ -3889,9 +3958,10 @@ var applyCollageFigureLayout = (figure, imagesCount, index) => {
   }
   set_css_props_default(figure, { "aspect-ratio": "4 / 3" });
 };
-var buildCollage = (app, container, imagesList, settings) => {
+var buildCollage = (app, container, imagesList, settings, component) => {
   const gallery = container.createEl("div");
   const imagesCount = imagesList.length;
+  const videoObserver = createVideoAutoplayObserver(component);
   gallery.addClass("grid-wrapper");
   let gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
   if (imagesCount === 1)
@@ -3920,14 +3990,15 @@ var buildCollage = (app, container, imagesList, settings) => {
     });
     applyCollageFigureLayout(figure, imagesCount, index);
     applyMediaFigureAttrs(figure, file);
-    void appendPreviewMedia(app, figure, file, settings);
+    appendPreviewMedia(app, figure, file, settings, component, videoObserver);
   });
   return gallery;
 };
 var build_collage_default = buildCollage;
 
 // src/build-horizontal.ts
-var buildHorizontal = (app, container, imagesList, settings) => {
+var buildHorizontal = (app, container, imagesList, settings, component) => {
+  const videoObserver = createVideoAutoplayObserver(component);
   const gallery = container.createEl("div");
   gallery.addClass("grid-wrapper");
   gallery.addClass("media-gallery-grid-wrapper");
@@ -3946,7 +4017,7 @@ var buildHorizontal = (app, container, imagesList, settings) => {
       "--media-gallery-radius": `${settings.radius}px`
     });
     applyMediaFigureAttrs(figure, file);
-    const media = appendPreviewMedia(app, figure, file, settings);
+    const media = appendPreviewMedia(app, figure, file, settings, component, videoObserver);
     set_css_props_default(media, { "border-radius": "0px" });
   });
   return gallery;
@@ -3954,7 +4025,8 @@ var buildHorizontal = (app, container, imagesList, settings) => {
 var build_horizontal_default = buildHorizontal;
 
 // src/build-vertical.ts
-var buildVertical = (app, container, imagesList, settings) => {
+var buildVertical = (app, container, imagesList, settings, component) => {
+  const videoObserver = createVideoAutoplayObserver(component);
   const gallery = container.createEl("div");
   gallery.addClass("grid-wrapper");
   gallery.addClass("media-gallery-grid-wrapper");
@@ -3976,7 +4048,7 @@ var buildVertical = (app, container, imagesList, settings) => {
       "box-sizing": "border-box"
     });
     applyMediaFigureAttrs(figure, file);
-    const media = appendPreviewMedia(app, figure, file, settings);
+    const media = appendPreviewMedia(app, figure, file, settings, component, videoObserver);
     set_css_props_default(media, { "border-radius": `${settings.radius}px` });
   });
   return gallery;
@@ -3984,34 +4056,9 @@ var buildVertical = (app, container, imagesList, settings) => {
 var build_vertical_default = buildVertical;
 
 // src/get-settings.ts
-var import_obsidian3 = __toModule(require("obsidian"));
+var import_obsidian4 = __toModule(require("obsidian"));
 var normalizeSettingsSrc = (src) => {
   return src.replace(/^(\s*path\s*:\s*)(\*{1,2})(\s*)$/gm, '$1"$2"$3');
-};
-var isRecord = (value) => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-var normalizeListSetting2 = (value) => {
-  if (Array.isArray(value)) {
-    return value.map((item) => String(item).trim()).filter(Boolean);
-  }
-  if (typeof value !== "string") {
-    return [];
-  }
-  const normalized = value.trim().replace(/^\[(.*)\]$/, "$1");
-  return normalized.split(",").map((item) => item.trim()).filter(Boolean);
-};
-var normalizeSeedSetting2 = (value) => {
-  if (value === null || typeof value === "undefined") {
-    return void 0;
-  }
-  if (typeof value === "string") {
-    return value.trim() || void 0;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value).trim() || void 0;
-  }
-  return void 0;
 };
 var toNumber = (value, fallback) => {
   if (typeof value === "number" && !Number.isNaN(value)) {
@@ -4057,14 +4104,14 @@ var toBoolean = (value, fallback) => {
   return fallback;
 };
 var getSettings = (src, container) => {
-  const parsedYaml = (0, import_obsidian3.parseYaml)(normalizeSettingsSrc(src));
+  const parsedYaml = (0, import_obsidian4.parseYaml)(normalizeSettingsSrc(src));
   if (!isRecord(parsedYaml)) {
     const error = "Cannot parse YAML!";
     render_error_default(container, error);
     throw new Error(error);
   }
   const settingsSrc = parsedYaml;
-  const normalizedPath = typeof settingsSrc.path === "string" && settingsSrc.path.trim() ? (0, import_obsidian3.normalizePath)(settingsSrc.path) : void 0;
+  const normalizedPath = typeof settingsSrc.path === "string" && settingsSrc.path.trim() ? (0, import_obsidian4.normalizePath)(settingsSrc.path) : void 0;
   return {
     path: normalizedPath,
     type: toLayout(settingsSrc.type, "vertical"),
@@ -4075,12 +4122,12 @@ var getSettings = (src, container) => {
     fit: toFit(settingsSrc.fit, "cover"),
     waveform: toBoolean(settingsSrc.waveform, true),
     spectrogram: toBoolean(settingsSrc.spectrogram, false),
-    extensions: normalizeListSetting2(settingsSrc.extensions),
-    exclude: normalizeListSetting2(settingsSrc.exclude),
+    extensions: normalizeListSetting(settingsSrc.extensions),
+    exclude: normalizeListSetting(settingsSrc.exclude),
     limit: toNumber(settingsSrc.limit, 0),
-    seed: normalizeSeedSetting2(settingsSrc.seed),
+    seed: normalizeSeedSetting(settingsSrc.seed),
     mobile: toNumber(settingsSrc.mobile, 1),
-    columns: import_obsidian3.Platform.isDesktop ? toNumber(settingsSrc.columns, 3) : toNumber(settingsSrc.mobile, 1),
+    columns: import_obsidian4.Platform.isDesktop ? toNumber(settingsSrc.columns, 3) : toNumber(settingsSrc.mobile, 1),
     height: toNumber(settingsSrc.height, 260)
   };
 };
@@ -4100,13 +4147,13 @@ var getDefaultGallerySettings = (type = "vertical") => {
     limit: 0,
     seed: void 0,
     mobile: 1,
-    columns: import_obsidian3.Platform.isDesktop ? 3 : 1,
+    columns: import_obsidian4.Platform.isDesktop ? 3 : 1,
     height: 260
   };
 };
 
 // src/init.ts
-var ImgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
+var ImgGalleryInit = class extends import_obsidian5.MarkdownRenderChild {
   constructor(plugin, src, container, app, sourcePath) {
     super(container);
     this.plugin = plugin;
@@ -4156,13 +4203,13 @@ var ImgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
         return;
       }
       if (this.settings.type === "horizontal") {
-        this.gallery = build_horizontal_default(this.app, this.container, this.imagesList, this.settings);
+        this.gallery = build_horizontal_default(this.app, this.container, this.imagesList, this.settings, this);
       } else if (this.settings.type === "mosaic" || this.settings.type === "collage") {
-        this.gallery = build_collage_default(this.app, this.container, this.imagesList, this.settings);
+        this.gallery = build_collage_default(this.app, this.container, this.imagesList, this.settings, this);
       } else {
-        this.gallery = build_vertical_default(this.app, this.container, this.imagesList, this.settings);
+        this.gallery = build_vertical_default(this.app, this.container, this.imagesList, this.settings, this);
       }
-      this.lightbox = build_lightbox_default(this.gallery, this.imagesList, this.app);
+      this.lightbox = build_lightbox_default(this.gallery, this.imagesList, this.app, this);
     } catch (error) {
       console.error("Media Gallery", error);
     }
@@ -4182,7 +4229,7 @@ var ImgGalleryInit = class extends import_obsidian4.MarkdownRenderChild {
 };
 
 // src/main.ts
-var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
+var ImgGallerySettingTab = class extends import_obsidian6.PluginSettingTab {
   constructor(app, plugin) {
     super(app, plugin);
     this.plugin = plugin;
@@ -4190,15 +4237,15 @@ var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
   display() {
     const { containerEl } = this;
     containerEl.empty();
-    new import_obsidian5.Setting(containerEl).setName("Performance").setHeading();
-    new import_obsidian5.Setting(containerEl).setName("Enable cache").setDesc("Caches the vault media list and per-folder lookups in memory. Disable this if the plugin uses too much RAM; galleries will rescan files on each render.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableCache).onChange((value) => __async(this, null, function* () {
+    new import_obsidian6.Setting(containerEl).setName("Performance").setHeading();
+    new import_obsidian6.Setting(containerEl).setName("Enable cache").setDesc("Caches the vault media list and per-folder lookups in memory. Disable this if the plugin uses too much RAM; galleries will rescan files on each render.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableCache).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.enableCache = value;
       galleryRuntimeSettings.enableCache = value;
       this.plugin.invalidateImageCache();
       yield this.plugin.saveSettings();
     })));
-    new import_obsidian5.Setting(containerEl).setName("Paths").setHeading();
-    new import_obsidian5.Setting(containerEl).setName("Show path and empty-gallery errors").setDesc("When enabled, invalid paths and empty gallery lookups render an inline error. When disabled, the block stays empty instead.").addToggle((toggle) => toggle.setValue(this.plugin.settings.showPathErrors).onChange((value) => __async(this, null, function* () {
+    new import_obsidian6.Setting(containerEl).setName("Paths").setHeading();
+    new import_obsidian6.Setting(containerEl).setName("Show path and empty-gallery errors").setDesc("When enabled, invalid paths and empty gallery lookups render an inline error. When disabled, the block stays empty instead.").addToggle((toggle) => toggle.setValue(this.plugin.settings.showPathErrors).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.showPathErrors = value;
       galleryRuntimeSettings.showPathErrors = value;
       yield this.plugin.saveSettings();
@@ -4213,7 +4260,7 @@ var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
       wildcardFileNameToggle.setDisabled(!enabled);
       wildcardFileNameToggle.setValue(enabled && this.plugin.settings.matchWildcardsAgainstFileNames);
     };
-    new import_obsidian5.Setting(containerEl).setName("Enable flexible path patterns").setDesc("Allows wildcard patterns like `media/**/concert*` and `media/2025-??`. Regular paths, `folder/*`, and `folder/**` stay on the fast path either way.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableFlexiblePathPatterns).onChange((value) => __async(this, null, function* () {
+    new import_obsidian6.Setting(containerEl).setName("Enable flexible path patterns").setDesc("Allows wildcard patterns like `media/**/concert*` and `media/2025-??`. Regular paths, `folder/*`, and `folder/**` stay on the fast path either way.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableFlexiblePathPatterns).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.enableFlexiblePathPatterns = value;
       galleryRuntimeSettings.enableFlexiblePathPatterns = value;
       if (!value) {
@@ -4224,7 +4271,7 @@ var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
       this.plugin.invalidateImageCache();
       yield this.plugin.saveSettings();
     })));
-    new import_obsidian5.Setting(containerEl).setName("Match wildcards against file names").setDesc("When enabled, flexible wildcard patterns match file names while the directory part only narrows the search scope. This option is available only when flexible path patterns are enabled.").addToggle((toggle) => {
+    new import_obsidian6.Setting(containerEl).setName("Match wildcards against file names").setDesc("When enabled, flexible wildcard patterns match file names while the directory part only narrows the search scope. This option is available only when flexible path patterns are enabled.").addToggle((toggle) => {
       wildcardFileNameToggle = toggle;
       syncWildcardFileNameToggle();
       return toggle.onChange((value) => __async(this, null, function* () {
@@ -4237,24 +4284,21 @@ var ImgGallerySettingTab = class extends import_obsidian5.PluginSettingTab {
         yield this.plugin.saveSettings();
       }));
     });
-    new import_obsidian5.Setting(containerEl).setName("Audio").setHeading();
-    new import_obsidian5.Setting(containerEl).setName("Enable audio visualizations").setDesc("Enables audio waveform and spectrogram rendering inside gallery blocks. If disabled, audio cards show only metadata and cover art.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAudioVisualizations).onChange((value) => __async(this, null, function* () {
+    new import_obsidian6.Setting(containerEl).setName("Audio").setHeading();
+    new import_obsidian6.Setting(containerEl).setName("Enable audio visualizations").setDesc("Enables audio waveform and spectrogram rendering inside gallery blocks. If disabled, audio cards show only metadata and cover art.").addToggle((toggle) => toggle.setValue(this.plugin.settings.enableAudioVisualizations).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.enableAudioVisualizations = value;
       galleryRuntimeSettings.enableAudioVisualizations = value;
       this.plugin.invalidateImageCache();
       yield this.plugin.saveSettings();
     })));
-    new import_obsidian5.Setting(containerEl).setName("Autoplay audio on open").setDesc("Starts audio playback automatically when you open an audio card.").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoplayAudioOnOpen).onChange((value) => __async(this, null, function* () {
+    new import_obsidian6.Setting(containerEl).setName("Autoplay audio on open").setDesc("Starts audio playback automatically when you open an audio card.").addToggle((toggle) => toggle.setValue(this.plugin.settings.autoplayAudioOnOpen).onChange((value) => __async(this, null, function* () {
       this.plugin.settings.autoplayAudioOnOpen = value;
       galleryRuntimeSettings.autoplayAudioOnOpen = value;
       yield this.plugin.saveSettings();
     })));
   }
 };
-var isRecord2 = (value) => {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-};
-var ImgGallery = class extends import_obsidian5.Plugin {
+var ImgGallery = class extends import_obsidian6.Plugin {
   constructor() {
     super(...arguments);
     this.settings = __spreadValues({}, DEFAULT_PLUGIN_SETTINGS);
@@ -4264,7 +4308,7 @@ var ImgGallery = class extends import_obsidian5.Plugin {
   loadSettings() {
     return __async(this, null, function* () {
       const rawLoaded = yield this.loadData();
-      const loaded = isRecord2(rawLoaded) ? rawLoaded : {};
+      const loaded = isRecord(rawLoaded) ? rawLoaded : {};
       this.settings = __spreadValues(__spreadValues({}, DEFAULT_PLUGIN_SETTINGS), loaded);
       if (typeof loaded.enableAudioVisualizations === "undefined" && typeof loaded.enableSpectrogram !== "undefined") {
         this.settings.enableAudioVisualizations = loaded.enableSpectrogram;
@@ -4287,9 +4331,15 @@ var ImgGallery = class extends import_obsidian5.Plugin {
       yield this.loadSettings();
       this.invalidateImageCache();
       this.addSettingTab(new ImgGallerySettingTab(this.app, this));
-      this.registerEvent(this.app.vault.on("create", () => this.invalidateImageCache()));
-      this.registerEvent(this.app.vault.on("delete", () => this.invalidateImageCache()));
-      this.registerEvent(this.app.vault.on("rename", () => this.invalidateImageCache()));
+      this.registerEvent(this.app.vault.on("create", () => {
+        this.invalidateImageCache();
+      }));
+      this.registerEvent(this.app.vault.on("delete", () => {
+        this.invalidateImageCache();
+      }));
+      this.registerEvent(this.app.vault.on("rename", () => {
+        this.invalidateImageCache();
+      }));
       const registerGalleryBlock = (blockType) => {
         this.registerMarkdownCodeBlockProcessor(blockType, (src, el, ctx) => {
           const handler = new ImgGalleryInit(this, src, el, this.app, ctx.sourcePath);
@@ -4347,11 +4397,9 @@ var ImgGallery = class extends import_obsidian5.Plugin {
     this._cachedMediaFolders.set(cacheKey, filtered);
     return filtered;
   }
-  getCachedImageFiles(path) {
-    return this.getCachedMediaFiles(path);
-  }
   onunload() {
     this.invalidateImageCache();
+    revokeAudioObjectUrls();
     cleanupMediaModals();
   }
 };

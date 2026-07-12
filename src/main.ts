@@ -1,9 +1,10 @@
 import { App, Plugin, PluginSettingTab, Setting, TFile } from 'obsidian'
 import type { ToggleComponent } from 'obsidian'
 import { cleanupMediaModals } from './build-lightbox'
-import { clearAudioCaches, isSearchEverywherePath, isShallowGlobPath, isVaultMedia, normalizeMediaSearchPath } from './get-imgs-list'
+import { clearAudioCaches, isSearchEverywherePath, isShallowGlobPath, isVaultMedia, normalizeMediaSearchPath, revokeAudioObjectUrls } from './get-imgs-list'
 import { ImgGalleryInit } from './init'
 import { DEFAULT_PLUGIN_SETTINGS, galleryRuntimeSettings } from './runtime-settings'
+import { isRecord } from './utils'
 import type { MediaCacheHost, MediaGalleryPluginSettings } from './types'
 
 type LoadedSettings = Partial<MediaGalleryPluginSettings> & {
@@ -128,10 +129,6 @@ class ImgGallerySettingTab extends PluginSettingTab {
   }
 }
 
-const isRecord = (value: unknown): value is Record<string, unknown> => {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
 export default class ImgGallery extends Plugin implements MediaCacheHost {
   settings: MediaGalleryPluginSettings = { ...DEFAULT_PLUGIN_SETTINGS }
   _cachedMediaFiles: TFile[] | null = null
@@ -167,9 +164,9 @@ export default class ImgGallery extends Plugin implements MediaCacheHost {
     this.invalidateImageCache()
 
     this.addSettingTab(new ImgGallerySettingTab(this.app, this))
-    this.registerEvent(this.app.vault.on('create', () => this.invalidateImageCache()))
-    this.registerEvent(this.app.vault.on('delete', () => this.invalidateImageCache()))
-    this.registerEvent(this.app.vault.on('rename', () => this.invalidateImageCache()))
+    this.registerEvent(this.app.vault.on('create', () => { this.invalidateImageCache(); }))
+    this.registerEvent(this.app.vault.on('delete', () => { this.invalidateImageCache(); }))
+    this.registerEvent(this.app.vault.on('rename', () => { this.invalidateImageCache(); }))
 
     const registerGalleryBlock = (blockType: string): void => {
       this.registerMarkdownCodeBlockProcessor(blockType, (src, el, ctx) => {
@@ -232,12 +229,9 @@ export default class ImgGallery extends Plugin implements MediaCacheHost {
     return filtered
   }
 
-  getCachedImageFiles(path?: string): TFile[] {
-    return this.getCachedMediaFiles(path)
-  }
-
   onunload(): void {
     this.invalidateImageCache()
+    revokeAudioObjectUrls()
     cleanupMediaModals()
   }
 }

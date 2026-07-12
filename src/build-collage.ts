@@ -1,5 +1,5 @@
-import type { App } from 'obsidian'
-import { appendPreviewMedia, applyMediaFigureAttrs } from './media-preview'
+import type { App, Component } from 'obsidian'
+import { appendPreviewMedia, applyMediaFigureAttrs, createVideoAutoplayObserver } from './media-preview'
 import setCssProps from './set-css-props'
 import type { GallerySettings, MediaEntry } from './types'
 
@@ -51,9 +51,10 @@ const applyCollageFigureLayout = (figure: HTMLElement, imagesCount: number, inde
   setCssProps(figure, { 'aspect-ratio': '4 / 3' })
 }
 
-const buildCollage = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings): HTMLElement => {
+const buildCollage = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
   const gallery = container.createEl('div')
   const imagesCount = imagesList.length
+  const videoObserver = createVideoAutoplayObserver(component)
   gallery.addClass('grid-wrapper')
 
   let gridTemplateColumns = 'repeat(3, minmax(0, 1fr))'
@@ -81,7 +82,7 @@ const buildCollage = (app: App, container: HTMLElement, imagesList: MediaEntry[]
     })
     applyCollageFigureLayout(figure, imagesCount, index)
     applyMediaFigureAttrs(figure, file)
-    void appendPreviewMedia(app, figure, file, settings)
+    appendPreviewMedia(app, figure, file, settings, component, videoObserver)
   })
 
   return gallery

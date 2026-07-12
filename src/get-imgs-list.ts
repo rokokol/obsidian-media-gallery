@@ -1,11 +1,25 @@
 import { App, Notice, TFile, TFolder, normalizePath, requestUrl } from 'obsidian'
 import renderError from './render-error'
 import { galleryRuntimeSettings } from './runtime-settings'
+import { normalizeListSetting, normalizeSeedSetting } from './utils'
 import type { AudioMetadata, GallerySettings, GallerySettingsOverride, MediaCacheHost, MediaEntry, MediaKind } from './types'
+
+export { normalizeListSetting, normalizeSeedSetting }
 
 const validImageExtensions = ['jpeg', 'jpg', 'gif', 'png', 'webp', 'tiff', 'tif', 'bmp', 'svg', 'avif']
 const validVideoExtensions = ['mp4', 'webm', 'mov', 'm4v', 'ogv']
 const validAudioExtensions = ['mp3', 'm4a', 'wav', 'ogg', 'oga', 'flac', 'aac', 'opus']
+
+// Waveform preview tunables.
+const WAVEFORM_BARS = 40
+const WAVEFORM_CONTRAST_POWER = 0.75
+
+// Spectrogram preview tunables (Goertzel-based band energy).
+const SPECTROGRAM_SLICES = 32
+const SPECTROGRAM_BANDS = 14
+const SPECTROGRAM_WINDOW_SIZE = 384
+const SPECTROGRAM_MAX_BIN = 88
+const SPECTROGRAM_CONTRAST_POWER = 0.36
 
 const audioArtworkCache = new Map<string, string | null>()
 const audioMetadataCache = new Map<string, AudioMetadata | null>()
@@ -13,12 +27,19 @@ const audioWaveformCache = new Map<string, number[] | null>()
 const audioSpectrogramCache = new Map<string, number[][] | null>()
 const audioObjectUrls = new Set<string>()
 
+// Clears memoized audio data so the next render re-reads it. Does NOT revoke
+// artwork object URLs: those may still be referenced by galleries currently on
+// screen, and revoking them here (e.g. on an unrelated vault event) would break
+// live cover art. URLs are released on plugin unload via revokeAudioObjectUrls.
 export const clearAudioCaches = (): void => {
   audioArtworkCache.clear()
   audioMetadataCache.clear()
   audioWaveformCache.clear()
   audioSpectrogramCache.clear()
-  audioObjectUrls.forEach((url) => URL.revokeObjectURL(url))
+}
+
+export const revokeAudioObjectUrls = (): void => {
+  audioObjectUrls.forEach((url) => { URL.revokeObjectURL(url); })
   audioObjectUrls.clear()
 }
 
@@ -224,7 +245,7 @@ const buildWaveformBars = async (arrayBuffer: ArrayBuffer): Promise<number[] | n
   try {
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
     const channel = audioBuffer.getChannelData(0)
-    const bars = 40
+    const bars = WAVEFORM_BARS
     const blockSize = Math.max(1, Math.floor(channel.length / bars))
     const values: number[] = []
     let maxValue = 0
@@ -242,7 +263,7 @@ const buildWaveformBars = async (arrayBuffer: ArrayBuffer): Promise<number[] | n
     }
 
     if (maxValue <= 0) return values
-    return values.map((value) => Math.pow(value / maxValue, 0.75))
+    return values.map((value) => Math.pow(value / maxValue, WAVEFORM_CONTRAST_POWER))
   } catch {
     return null
   } finally {
@@ -291,10 +312,10 @@ const buildSpectrogramData = async (arrayBuffer: ArrayBuffer): Promise<number[][
   try {
     const audioBuffer = await ctx.decodeAudioData(arrayBuffer.slice(0))
     const channel = audioBuffer.getChannelData(0)
-    const slices = 32
-    const bands = 14
-    const windowSize = 384
-    const maxBin = 88
+    const slices = SPECTROGRAM_SLICES
+    const bands = SPECTROGRAM_BANDS
+    const windowSize = SPECTROGRAM_WINDOW_SIZE
+    const maxBin = SPECTROGRAM_MAX_BIN
     const sliceSize = Math.max(windowSize, Math.floor(channel.length / slices))
     const data: number[][] = []
     const centerBins = Array.from({ length: bands }, (_, band) => {
@@ -318,7 +339,7 @@ const buildSpectrogramData = async (arrayBuffer: ArrayBuffer): Promise<number[][
 
     return data.map((row, rowIndex) => row.map((value, bandIndex) => {
       const normalized = value / maxEnergy
-      const lifted = Math.pow(normalized, 0.36)
+      const lifted = Math.pow(normalized, SPECTROGRAM_CONTRAST_POWER)
       const bandBias = 0.86 + (bandIndex / Math.max(1, bands - 1)) * 0.44
       const timeBias = 0.92 + 0.08 * Math.sin((rowIndex / Math.max(1, slices - 1)) * Math.PI)
       return Math.max(0.06, Math.min(1, lifted * bandBias * timeBias))
@@ -351,27 +372,13 @@ export const isSearchEverywherePath = (path?: string): boolean => {
 }
 
 const hasWildcardPattern = (path?: string): boolean => typeof path === 'string' && /[*?]/.test(path)
-export const isRecursiveGlobPath = (path?: string): boolean => typeof path === 'string' && /\/\*\*$/.test(path)
-export const isShallowGlobPath = (path?: string): boolean => typeof path === 'string' && /\/\*$/.test(path) && !isRecursiveGlobPath(path)
+export const isRecursiveGlobPath = (path?: string): boolean => typeof path === 'string' && path.endsWith("/**")
+export const isShallowGlobPath = (path?: string): boolean => typeof path === 'string' && path.endsWith("/*") && !isRecursiveGlobPath(path)
 
 export const normalizeMediaSearchPath = (path: string): string => {
   if (isRecursiveGlobPath(path)) return normalizePath(path.slice(0, -3))
   if (isShallowGlobPath(path)) return normalizePath(path.slice(0, -2))
   return normalizePath(path)
-}
-
-export const normalizeListSetting = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean)
-  if (typeof value !== 'string') return []
-  const normalized = value.trim().replace(/^\[(.*)\]$/, '$1')
-  return normalized.split(',').map((item) => item.trim()).filter(Boolean)
-}
-
-export const normalizeSeedSetting = (value: unknown): string | undefined => {
-  if (value === null || typeof value === 'undefined') return undefined
-  if (typeof value === 'string') return value.trim() || undefined
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value).trim() || undefined
-  return undefined
 }
 
 const hashSeed = (seed: string): number => {
@@ -412,7 +419,7 @@ const createGlobRegex = (pattern: string, allowSlash: boolean): RegExp => {
 }
 
 const getPathWithoutExtension = (filePath: string): string => {
-  const normalizedPath = `${filePath}`.split('?')[0].split('#')[0]
+  const normalizedPath = filePath.split('?')[0].split('#')[0]
   const lastSlashIndex = normalizedPath.lastIndexOf('/')
   const lastDotIndex = normalizedPath.lastIndexOf('.')
   if (lastDotIndex <= lastSlashIndex) return normalizedPath
@@ -420,7 +427,7 @@ const getPathWithoutExtension = (filePath: string): string => {
 }
 
 const getFileName = (filePath: string): string => {
-  const normalizedPath = `${filePath}`.split('?')[0].split('#')[0]
+  const normalizedPath = filePath.split('?')[0].split('#')[0]
   return normalizedPath.split('/').pop() || normalizedPath
 }
 
@@ -450,7 +457,7 @@ const getPatternScopePath = (pattern?: string): string | undefined => {
 const createPathPatternMatcher = (pattern: string, allowFlexible: boolean): ((filePath: string) => boolean) => {
   if (!pattern) return () => false
 
-  const normalizedPattern = `${pattern}`.trim().replace(/\\/g, '/').replace(/\/+/g, '/')
+  const normalizedPattern = pattern.trim().replace(/\\/g, '/').replace(/\/+/g, '/')
   if (isSearchEverywherePath(normalizedPattern)) return () => true
 
   if (isRecursiveGlobPath(normalizedPattern)) {
@@ -471,7 +478,7 @@ const createPathPatternMatcher = (pattern: string, allowFlexible: boolean): ((fi
       const dirRegex = dirPattern ? createGlobRegex(dirPattern, false) : null
       const fileRegex = createGlobRegex(filePattern, true)
       return (filePath) => {
-        const normalizedFilePath = `${filePath}`.split('?')[0].split('#')[0]
+        const normalizedFilePath = filePath.split('?')[0].split('#')[0]
         const dirPath = normalizedFilePath.split('/').slice(0, -1).join('/')
         if (dirRegex && !dirRegex.test(dirPath)) return false
         return fileRegex.test(getFileName(normalizedFilePath)) || fileRegex.test(getFileNameWithoutExtension(normalizedFilePath))
@@ -564,8 +571,8 @@ export const parseExplicitMediaList = (app: App, src: string, sourcePath: string
 
   lines.forEach((line) => {
     let candidate: MediaEntry | null = null
-    const wikiMatch = line.match(/^!?\[\[(.+?)\]\]$/)
-    const markdownMatch = line.match(/^!\[[^\]]*\]\((.+?)\)$/)
+    const wikiMatch = /^!?\[\[(.+?)\]\]$/.exec(line)
+    const markdownMatch = /^!\[[^\]]*\]\((.+?)\)$/.exec(line)
 
     if (wikiMatch) {
       candidate = resolveMediaFromLink(app, wikiMatch[1], sourcePath)
@@ -622,7 +629,7 @@ export const parseExplicitBlock = (app: App, src: string, sourcePath: string): {
   const knownKeys = new Set(['type', 'radius', 'gutter', 'sortby', 'sort', 'mobile', 'columns', 'height', 'path', 'fit', 'waveform', 'spectrogram', 'extensions', 'exclude', 'limit', 'seed'])
 
   lines.forEach((line) => {
-    const match = line.match(/^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/)
+    const match = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/.exec(line)
     if (!match) {
       mediaLines.push(line)
       return

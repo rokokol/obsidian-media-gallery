@@ -71,14 +71,14 @@ export class ImgGalleryInit extends MarkdownRenderChild {
       }
 
       if (this.settings.type === 'horizontal') {
-        this.gallery = buildHorizontal(this.app, this.container, this.imagesList, this.settings)
+        this.gallery = buildHorizontal(this.app, this.container, this.imagesList, this.settings, this)
       } else if (this.settings.type === 'mosaic' || this.settings.type === 'collage') {
-        this.gallery = buildCollage(this.app, this.container, this.imagesList, this.settings)
+        this.gallery = buildCollage(this.app, this.container, this.imagesList, this.settings, this)
       } else {
-        this.gallery = buildVertical(this.app, this.container, this.imagesList, this.settings)
+        this.gallery = buildVertical(this.app, this.container, this.imagesList, this.settings, this)
       }
 
-      this.lightbox = buildLightbox(this.gallery, this.imagesList, this.app)
+      this.lightbox = buildLightbox(this.gallery, this.imagesList, this.app, this)
     } catch (error) {
       console.error('Media Gallery', error)
     }

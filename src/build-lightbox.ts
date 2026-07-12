@@ -1,4 +1,5 @@
 import { App, Platform, TFile } from 'obsidian'
+import type { Component } from 'obsidian'
 import lightGallery from 'lightgallery'
 import lgThumbnail from 'lightgallery/plugins/thumbnail'
 import { getAudioArtworkUrl, getAudioMetadata, getAudioMimeType, getAudioSubtitle, getMediaDisplayName } from './get-imgs-list'
@@ -9,48 +10,71 @@ import type { LightGalleryInitEvent, LightGalleryInstance, MediaEntry, MediaModa
 let videoModalSingleton: MediaModalController | null = null
 let audioModalSingleton: MediaModalController | null = null
 
+interface MediaModalShell {
+  modal: HTMLElement
+  content: HTMLElement
+  hiddenClass: string
+  removeEscListener: () => void
+}
+
+const logMediaError = (error: unknown): void => {
+  console.error('Media Gallery', error)
+}
+
+// Shared scaffold for the video and audio modals: full-screen overlay + content
+// box + close button, with background click, close button, and Escape all wired
+// to `onClose`. Title/subtitle/media are added by each caller.
+const createMediaModalShell = (kind: 'video' | 'audio', onClose: () => void): MediaModalShell => {
+  const modalClass = `img-gallery-${kind}-modal`
+  const hiddenClass = `${modalClass}-hidden`
+  const modal = document.body.createEl('div', { cls: `${modalClass} ${hiddenClass}` })
+  const content = modal.createEl('div', { cls: `${modalClass}-content` })
+  const close = content.createEl('button', { cls: `${modalClass}-close`, text: '×' })
+
+  const escHandler = (event: KeyboardEvent): void => {
+    if (event.key === 'Escape' && !modal.hasClass(hiddenClass)) onClose()
+  }
+  modal.addEventListener('click', (event) => {
+    if (event.target === modal) onClose()
+  })
+  close.addEventListener('click', onClose)
+  document.addEventListener('keydown', escHandler)
+
+  return {
+    modal,
+    content,
+    hiddenClass,
+    removeEscListener: () => { document.removeEventListener('keydown', escHandler); },
+  }
+}
+
 const createVideoModal = (): MediaModalController => {
-  let escHandler: ((event: KeyboardEvent) => void) | null = null
-  const modal = document.body.createEl('div', { cls: 'img-gallery-video-modal img-gallery-video-modal-hidden' })
-  const content = modal.createEl('div', { cls: 'img-gallery-video-modal-content' })
-  const title = content.createEl('div', { cls: 'img-gallery-video-modal-title' })
-  const close = content.createEl('button', { cls: 'img-gallery-video-modal-close', text: '×' })
-  const video = content.createEl('video', { cls: 'img-gallery-video-modal-player' })
+  let close = (): void => {}
+  const shell = createMediaModalShell('video', () => { close(); })
+  const title = shell.content.createEl('div', { cls: 'img-gallery-video-modal-title' })
+  const video = shell.content.createEl('video', { cls: 'img-gallery-video-modal-player' })
   video.controls = true
   video.playsInline = true
   video.preload = 'metadata'
 
-  const closeModal = (): void => {
+  close = () => {
     video.pause()
     video.removeAttribute('src')
     video.load()
-    modal.addClass('img-gallery-video-modal-hidden')
+    shell.modal.addClass(shell.hiddenClass)
   }
-
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal()
-  })
-  close.addEventListener('click', closeModal)
-  escHandler = (event) => {
-    if (event.key === 'Escape' && !modal.hasClass('img-gallery-video-modal-hidden')) {
-      closeModal()
-    }
-  }
-  document.addEventListener('keydown', escHandler)
 
   return {
     open: (file) => {
       title.setText(file.name)
       video.src = file.uri
-      modal.removeClass('img-gallery-video-modal-hidden')
+      shell.modal.removeClass(shell.hiddenClass)
       void video.play().catch(() => {})
     },
     destroy: () => {
-      if (escHandler) {
-        document.removeEventListener('keydown', escHandler)
-      }
-      closeModal()
-      modal.remove()
+      shell.removeEscListener()
+      close()
+      shell.modal.remove()
     },
   }
 }
@@ -63,38 +87,25 @@ const getVideoModal = (): MediaModalController => {
 }
 
 const createAudioModal = (app: App): MediaModalController => {
-  let escHandler: ((event: KeyboardEvent) => void) | null = null
   let currentPath: string | null = null
+  let close = (): void => {}
 
-  const modal = document.body.createEl('div', { cls: 'img-gallery-audio-modal img-gallery-audio-modal-hidden' })
-  const content = modal.createEl('div', { cls: 'img-gallery-audio-modal-content' })
-  const title = content.createEl('div', { cls: 'img-gallery-audio-modal-title' })
-  const subtitle = content.createEl('div', { cls: 'img-gallery-audio-modal-subtitle is-empty' })
-  const close = content.createEl('button', { cls: 'img-gallery-audio-modal-close', text: '×' })
-  const cover = content.createEl('div', { cls: 'img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty' })
-  const audio = content.createEl('audio', { cls: 'img-gallery-audio-modal-player' })
+  const shell = createMediaModalShell('audio', () => { close(); })
+  const title = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-title' })
+  const subtitle = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-subtitle is-empty' })
+  const cover = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty' })
+  const audio = shell.content.createEl('audio', { cls: 'img-gallery-audio-modal-player' })
   audio.controls = true
   audio.preload = 'metadata'
 
-  const closeModal = (): void => {
+  close = () => {
     currentPath = null
     audio.pause()
     audio.removeAttribute('src')
     audio.removeAttribute('type')
     audio.load()
-    modal.addClass('img-gallery-audio-modal-hidden')
+    shell.modal.addClass(shell.hiddenClass)
   }
-
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) closeModal()
-  })
-  close.addEventListener('click', closeModal)
-  escHandler = (event) => {
-    if (event.key === 'Escape' && !modal.hasClass('img-gallery-audio-modal-hidden')) {
-      closeModal()
-    }
-  }
-  document.addEventListener('keydown', escHandler)
 
   return {
     open: (file) => {
@@ -110,32 +121,36 @@ const createAudioModal = (app: App): MediaModalController => {
 
       const activePath = file.path
 
-      void getAudioMetadata(app, file).then((metadata) => {
-        if (currentPath !== activePath) return
-        title.setText(metadata?.title || getMediaDisplayName(file))
-        subtitle.setText(getAudioSubtitle(metadata))
-        subtitle.toggleClass('is-empty', !subtitle.getText())
-      })
+      // Guard against a slower metadata read landing after the user switched
+      // to (or closed) a different track.
+      void getAudioMetadata(app, file)
+        .then((metadata) => {
+          if (currentPath !== activePath) return
+          title.setText(metadata?.title || getMediaDisplayName(file))
+          subtitle.setText(getAudioSubtitle(metadata))
+          subtitle.toggleClass('is-empty', !subtitle.getText())
+        })
+        .catch(logMediaError)
 
-      void getAudioArtworkUrl(app, file).then((artworkUrl) => {
-        if (currentPath !== activePath || !artworkUrl) return
-        cover.removeClass('img-gallery-audio-modal-cover-empty')
-        const img = cover.createEl('img', { cls: 'img-gallery-audio-modal-cover-image' })
-        img.src = artworkUrl
-        img.alt = file.name
-      })
+      void getAudioArtworkUrl(app, file)
+        .then((artworkUrl) => {
+          if (currentPath !== activePath || !artworkUrl) return
+          cover.removeClass('img-gallery-audio-modal-cover-empty')
+          const img = cover.createEl('img', { cls: 'img-gallery-audio-modal-cover-image' })
+          img.src = artworkUrl
+          img.alt = file.name
+        })
+        .catch(logMediaError)
 
-      modal.removeClass('img-gallery-audio-modal-hidden')
+      shell.modal.removeClass(shell.hiddenClass)
       if (galleryRuntimeSettings.autoplayAudioOnOpen) {
         void audio.play().catch(() => {})
       }
     },
     destroy: () => {
-      if (escHandler) {
-        document.removeEventListener('keydown', escHandler)
-      }
-      closeModal()
-      modal.remove()
+      shell.removeEscListener()
+      close()
+      shell.modal.remove()
     },
   }
 }
@@ -307,8 +322,8 @@ const installCustomZoom = (galleryLightbox: LightGalleryInstance): (() => void) 
   }
 }
 
-const globalSearchBtn = (gallery: HTMLElement, imagesList: MediaEntry[], app: App): void => {
-  gallery.addEventListener('lgInit', (event: Event) => {
+const globalSearchBtn = (gallery: HTMLElement, imagesList: MediaEntry[], app: App, component: Component): void => {
+  const onInit = (event: Event): void => {
     const galleryEvent = event as LightGalleryInitEvent
     const galleryInstance = galleryEvent.detail.instance
     const btn = '<button type="button" id="btn-glob-search" class="lg-icon btn-glob-search"></button>'
@@ -331,13 +346,18 @@ const globalSearchBtn = (gallery: HTMLElement, imagesList: MediaEntry[], app: Ap
 
       galleryInstance.closeGallery()
     })
-  })
+  }
+
+  // 'lgInit' is a custom lightGallery event, so it is not in registerDomEvent's
+  // typed event map — attach manually and unregister via the component lifecycle.
+  gallery.addEventListener('lgInit', onInit)
+  component.register(() => { gallery.removeEventListener('lgInit', onInit); })
 }
 
-const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App): LightGalleryInstance => {
+const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App, component: Component): LightGalleryInstance => {
   const lightboxImages = imagesList.filter((file) => file.kind === 'image')
   if (Platform.isDesktop && lightboxImages.length) {
-    globalSearchBtn(gallery, lightboxImages, app)
+    globalSearchBtn(gallery, lightboxImages, app, component)
   }
 
   const galleryLightbox = lightGallery(gallery, {
@@ -361,7 +381,7 @@ const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App)
   galleryLightbox.__imgGalleryDestroyZoom = destroyZoom
 
   gallery.querySelectorAll<HTMLElement>('.grid-item[data-media-kind="video"]').forEach((item) => {
-    item.addEventListener('click', () => {
+    component.registerDomEvent(item, 'click', () => {
       const itemPath = item.getAttribute('data-path')
       const matched = imagesList.find((file) => file.kind === 'video' && file.path === itemPath)
       if (matched) {
@@ -371,7 +391,7 @@ const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App)
   })
 
   gallery.querySelectorAll<HTMLElement>('.grid-item[data-media-kind="audio"]').forEach((item) => {
-    item.addEventListener('click', () => {
+    component.registerDomEvent(item, 'click', () => {
       const itemPath = item.getAttribute('data-path')
       const matched = imagesList.find((file) => file.kind === 'audio' && file.path === itemPath)
       if (matched) {
