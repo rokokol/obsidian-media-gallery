@@ -3727,8 +3727,9 @@ var import_obsidian5 = __toModule(require("obsidian"));
 
 // src/media-preview.ts
 var import_obsidian3 = __toModule(require("obsidian"));
-var VIDEO_POSTER_FRAGMENT = "#t=0.1";
-var MOBILE_AUTOPLAY_VISIBILITY = 0.25;
+var POSTER_SEEK_TIME = 0.1;
+var POSTER_CAPTURE_VISIBILITY = 0.01;
+var POSTER_PREFETCH_MARGIN = "200px";
 var logMediaError2 = (error) => {
   console.error("Media Gallery", error);
 };
@@ -3741,20 +3742,50 @@ var trackMediaLoading = (figure, media, readyEvent) => {
   media.addEventListener(readyEvent, clear, { once: true });
   media.addEventListener("error", clear, { once: true });
 };
-var createVideoAutoplayObserver = (component) => {
+var capturePoster = (video) => {
+  if (video.dataset.posterState)
+    return;
+  video.dataset.posterState = "pending";
+  const snapshot = () => {
+    try {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      if (!ctx || !canvas.width || !canvas.height) {
+        video.dataset.posterState = "failed";
+        return;
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      video.poster = canvas.toDataURL("image/jpeg", 0.7);
+      video.dataset.posterState = "done";
+    } catch (error) {
+      video.dataset.posterState = "failed";
+      logMediaError2(error);
+    }
+  };
+  const seek = () => {
+    video.addEventListener("seeked", snapshot, { once: true });
+    video.currentTime = Math.min(POSTER_SEEK_TIME, Math.max(0, (video.duration || POSTER_SEEK_TIME) - 0.01));
+  };
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    seek();
+  } else {
+    video.addEventListener("loadedmetadata", seek, { once: true });
+  }
+};
+var createVideoPreviewObserver = (component) => {
   if (!import_obsidian3.Platform.isMobile)
     return null;
   const observer = new IntersectionObserver((entries) => {
     entries.forEach((entry) => {
+      if (!entry.isIntersecting)
+        return;
       const video = entry.target;
-      if (entry.isIntersecting) {
-        void video.play().catch(() => {
-        });
-      } else {
-        video.pause();
-      }
+      capturePoster(video);
+      observer.unobserve(video);
     });
-  }, { threshold: MOBILE_AUTOPLAY_VISIBILITY });
+  }, { threshold: POSTER_CAPTURE_VISIBILITY, rootMargin: POSTER_PREFETCH_MARGIN });
   component.register(() => {
     observer.disconnect();
   });
@@ -3875,7 +3906,7 @@ var appendPreviewMedia = (app, figure, file, settings, component, videoObserver)
     video.loop = true;
     video.playsInline = true;
     video.preload = "metadata";
-    video.src = `${file.uri}${VIDEO_POSTER_FRAGMENT}`;
+    video.src = file.uri;
     video.setAttribute("data-mime", getVideoMimeType(file.path));
     set_css_props_default(video, {
       width: "100%",
@@ -3961,7 +3992,7 @@ var applyCollageFigureLayout = (figure, imagesCount, index) => {
 var buildCollage = (app, container, imagesList, settings, component) => {
   const gallery = container.createEl("div");
   const imagesCount = imagesList.length;
-  const videoObserver = createVideoAutoplayObserver(component);
+  const videoObserver = createVideoPreviewObserver(component);
   gallery.addClass("grid-wrapper");
   let gridTemplateColumns = "repeat(3, minmax(0, 1fr))";
   if (imagesCount === 1)
@@ -3998,7 +4029,7 @@ var build_collage_default = buildCollage;
 
 // src/build-horizontal.ts
 var buildHorizontal = (app, container, imagesList, settings, component) => {
-  const videoObserver = createVideoAutoplayObserver(component);
+  const videoObserver = createVideoPreviewObserver(component);
   const gallery = container.createEl("div");
   gallery.addClass("grid-wrapper");
   gallery.addClass("media-gallery-grid-wrapper");
@@ -4026,7 +4057,7 @@ var build_horizontal_default = buildHorizontal;
 
 // src/build-vertical.ts
 var buildVertical = (app, container, imagesList, settings, component) => {
-  const videoObserver = createVideoAutoplayObserver(component);
+  const videoObserver = createVideoPreviewObserver(component);
   const gallery = container.createEl("div");
   gallery.addClass("grid-wrapper");
   gallery.addClass("media-gallery-grid-wrapper");

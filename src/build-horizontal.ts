@@ -1,10 +1,10 @@
 import type { App, Component } from 'obsidian'
-import { appendPreviewMedia, applyMediaFigureAttrs, createVideoAutoplayObserver } from './media-preview'
+import { appendPreviewMedia, applyMediaFigureAttrs, createVideoPreviewObserver } from './media-preview'
 import setCssProps from './set-css-props'
 import type { GallerySettings, MediaEntry } from './types'
 
 const buildHorizontal = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
-  const videoObserver = createVideoAutoplayObserver(component)
+  const videoObserver = createVideoPreviewObserver(component)
   const gallery = container.createEl('div')
   gallery.addClass('grid-wrapper')
   gallery.addClass('media-gallery-grid-wrapper')

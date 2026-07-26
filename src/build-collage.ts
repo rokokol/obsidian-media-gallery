@@ -1,5 +1,5 @@
 import type { App, Component } from 'obsidian'
-import { appendPreviewMedia, applyMediaFigureAttrs, createVideoAutoplayObserver } from './media-preview'
+import { appendPreviewMedia, applyMediaFigureAttrs, createVideoPreviewObserver } from './media-preview'
 import setCssProps from './set-css-props'
 import type { GallerySettings, MediaEntry } from './types'
 
@@ -54,7 +54,7 @@ const applyCollageFigureLayout = (figure: HTMLElement, imagesCount: number, inde
 const buildCollage = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
   const gallery = container.createEl('div')
   const imagesCount = imagesList.length
-  const videoObserver = createVideoAutoplayObserver(component)
+  const videoObserver = createVideoPreviewObserver(component)
   gallery.addClass('grid-wrapper')
 
   let gridTemplateColumns = 'repeat(3, minmax(0, 1fr))'

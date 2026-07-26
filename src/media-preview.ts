@@ -5,11 +5,13 @@ import { galleryRuntimeSettings } from './runtime-settings'
 import setCssProps from './set-css-props'
 import type { GallerySettings, MediaEntry } from './types'
 
-// Media fragment appended to a video src so mobile browsers paint the first
-// frame as a still poster instead of a blank/white element with native chrome.
-const VIDEO_POSTER_FRAGMENT = '#t=0.1'
-// Share of a preview that must be visible before mobile autoplay kicks in.
-const MOBILE_AUTOPLAY_VISIBILITY = 0.25
+// Time (seconds) to seek to before grabbing the poster frame. A tiny non-zero
+// offset dodges the occasional black frame some encoders put at exactly 0s.
+const POSTER_SEEK_TIME = 0.1
+// Any sliver of visibility is enough to warrant capturing the poster.
+const POSTER_CAPTURE_VISIBILITY = 0.01
+// Prefetch margin so the poster is captured just before a tile scrolls in.
+const POSTER_PREFETCH_MARGIN = '200px'
 
 const logMediaError = (error: unknown): void => {
   console.error('Media Gallery', error)
@@ -27,24 +29,69 @@ const trackMediaLoading = (figure: HTMLElement, media: HTMLElement, readyEvent: 
   media.addEventListener('error', clear, { once: true })
 }
 
-// One IntersectionObserver per gallery: on mobile there is no hover, so visible
-// videos autoplay (muted, looped) and off-screen ones pause to save battery and
-// bandwidth. Returns null on desktop where hover-to-play is used instead.
-export const createVideoAutoplayObserver = (component: Component): IntersectionObserver | null => {
+// Paint a real poster for a mobile video preview. Mobile webviews only decode a
+// frame once the video actually plays, so a `#t=` src fragment leaves a native
+// placeholder (the "black triangle") until first playback. A programmatic seek
+// forces the decode, and the decoded frame is snapshotted into `video.poster`
+// so it survives pause/reset even when autoplay is blocked (low-power/data-saver).
+export const capturePoster = (video: HTMLVideoElement): void => {
+  // `posterState` doubles as a guard so the observer never re-captures a tile.
+  if (video.dataset.posterState) return
+  video.dataset.posterState = 'pending'
+
+  const snapshot = (): void => {
+    try {
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth
+      canvas.height = video.videoHeight
+      const ctx = canvas.getContext('2d')
+      if (!ctx || !canvas.width || !canvas.height) {
+        video.dataset.posterState = 'failed'
+        return
+      }
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      video.poster = canvas.toDataURL('image/jpeg', 0.7)
+      video.dataset.posterState = 'done'
+    } catch (error) {
+      // Tainted canvas or an unsupported codec: leave the native preview as-is.
+      video.dataset.posterState = 'failed'
+      logMediaError(error)
+    }
+  }
+
+  const seek = (): void => {
+    video.addEventListener('seeked', snapshot, { once: true })
+    // Nudge the pipeline; clamp so we never seek past a very short clip.
+    video.currentTime = Math.min(POSTER_SEEK_TIME, Math.max(0, (video.duration || POSTER_SEEK_TIME) - 0.01))
+  }
+
+  if (video.readyState >= HTMLMediaElement.HAVE_METADATA) {
+    seek()
+  } else {
+    video.addEventListener('loadedmetadata', seek, { once: true })
+  }
+}
+
+// One IntersectionObserver per gallery. Mobile has no hover, so instead of
+// autoplaying grid videos (distracting, battery-hungry) each tile lazily captures
+// a static poster frame as it nears the viewport (see capturePoster); tapping a
+// tile opens the full-screen player. Capturing on scroll — rather than all at
+// once — keeps us under the platform's simultaneous-decode limit. Returns null on
+// desktop, where hover-to-play is used instead.
+export const createVideoPreviewObserver = (component: Component): IntersectionObserver | null => {
   if (!Platform.isMobile) return null
 
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach((entry) => {
+        if (!entry.isIntersecting) return
         const video = entry.target as HTMLVideoElement
-        if (entry.isIntersecting) {
-          void video.play().catch(() => {})
-        } else {
-          video.pause()
-        }
+        capturePoster(video)
+        // Poster is a one-shot: stop observing once it is settled.
+        observer.unobserve(video)
       })
     },
-    { threshold: MOBILE_AUTOPLAY_VISIBILITY },
+    { threshold: POSTER_CAPTURE_VISIBILITY, rootMargin: POSTER_PREFETCH_MARGIN },
   )
 
   component.register(() => { observer.disconnect(); })
@@ -191,9 +238,9 @@ export const appendPreviewMedia = (
     video.loop = true
     video.playsInline = true
     video.preload = 'metadata'
-    // The #t fragment forces a decoded first frame so the preview never shows a
-    // blank element (the root cause of the mobile "white screen" bug).
-    video.src = `${file.uri}${VIDEO_POSTER_FRAGMENT}`
+    // Metadata is enough for the poster capture to seek and snapshot the first
+    // frame (see capturePoster); no #t= fragment needed.
+    video.src = file.uri
     video.setAttribute('data-mime', getVideoMimeType(file.path))
     setCssProps(video, {
       width: '100%',
@@ -206,7 +253,8 @@ export const appendPreviewMedia = (
     trackMediaLoading(figure, video, 'loadeddata')
 
     if (Platform.isMobile) {
-      // No hover on touch devices: autoplay while visible via the shared observer.
+      // No hover on touch devices: show a static poster (captured via the shared
+      // observer) and defer playback to the full-screen player opened on tap.
       videoObserver?.observe(video)
     } else {
       component.registerDomEvent(video, 'mouseenter', () => {
