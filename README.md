@@ -8,6 +8,45 @@ It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugi
 
 > **Flexible and convenient gallery for images, GIFs, videos, and music.**
 
+## Contents
+
+- [Attribution](#attribution)
+- [Version Lineage](#version-lineage)
+- [Highlights](#highlights)
+- [Supported Media](#supported-media)
+- [Block Aliases](#block-aliases)
+- [Usage Modes](#usage-modes)
+  - [1. Folder-Based Gallery](#1-folder-based-gallery)
+  - [2. Explicit Media List](#2-explicit-media-list)
+  - [3. Combined Folder + Explicit Media](#3-combined-folder--explicit-media)
+- [Settings Inside the Block](#settings-inside-the-block)
+- [Layout Modes](#layout-modes)
+  - [vertical](#vertical)
+  - [horizontal](#horizontal)
+  - [mosaic](#mosaic)
+  - [collage](#collage)
+- [Audio Features](#audio-features)
+  - [Example: Audio-Heavy Block](#example-audio-heavy-block)
+- [Plugin Settings](#plugin-settings)
+  - [Performance](#performance)
+  - [Paths](#paths)
+  - [Audio](#audio)
+- [Performance Notes](#performance-notes)
+- [Default Behavior](#default-behavior)
+  - [Folder galleries](#folder-galleries)
+  - [Explicit media lists](#explicit-media-lists)
+- [Examples](#examples)
+  - [Mixed Media Dump](#mixed-media-dump)
+  - [Search the Entire Vault](#search-the-entire-vault)
+  - [Path Patterns](#path-patterns)
+  - [Filters](#filters)
+  - [Horizontal Strip](#horizontal-strip)
+  - [Gentle Mosaic](#gentle-mosaic)
+- [Installing from Source](#installing-from-source)
+- [Development Notes](#development-notes)
+  - [Local validation](#local-validation)
+- [License](#license)
+
 ## Attribution
 
 This plugin is based on `obsidian-image-gallery` by Luca Orio and was substantially extended for mixed-media use cases by `rokokol`.
