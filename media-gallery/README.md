@@ -320,7 +320,3 @@ For GitHub Releases, attach:
 - The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
 - The release id is `media-gallery`.
 - The current release version is `1.0.0`.
-
-## License
-
-This project is released under the MIT License. See `LICENSE`.

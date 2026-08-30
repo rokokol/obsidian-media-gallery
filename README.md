@@ -45,7 +45,6 @@ It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugi
 - [Installing from Source](#installing-from-source)
 - [Development Notes](#development-notes)
   - [Local validation](#local-validation)
-- [License](#license)
 
 ## Attribution
 
@@ -397,7 +396,3 @@ Path errors can be disabled in plugin settings via `Show path and empty-gallery 
 - The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
 - The release id is `media-gallery`.
 - The current release version is `2.0.0`.
-
-## License
-
-This project is released under the MIT License. See `LICENSE`.
