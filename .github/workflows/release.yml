@@ -1,0 +1,66 @@
+name: Release Obsidian plugin
+
+# A pushed tag is a release: `npm version` makes the tag, and this builds the tagged commit and
+# publishes the three files Obsidian installs
+on:
+  push:
+    tags:
+      - "*"
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+
+      # `npm version` writes the tag and both files together, so a tag that disagrees with the
+      # tagged commit was pushed by hand, onto the wrong commit; stop before a release goes out
+      # under it
+      - name: Tag matches manifest.json and package.json
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          for file in manifest.json package.json; do
+            version=$(jq -r .version "$file")
+            if [ "$version" != "$TAG" ]; then
+              echo "::error::tag $TAG does not match $file version $version"
+              exit 1
+            fi
+          done
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check
+        run: npm run check:types && npm run lint && npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: Create release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # A tag can be pushed again — after a history rewrite, say — and the release
+          # is then already there. Leave it alone rather than failing the run
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "release $TAG already exists, leaving it as it is"
+            exit 0
+          fi
+
+          gh release create "$TAG" \
+            --title="$TAG" \
+            --generate-notes \
+            main.js manifest.json styles.css
