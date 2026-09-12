@@ -1,6 +1,6 @@
 # Contributing
 
-Issues and pull requests are welcome. This is a small project, so nothing here is heavy — read the two sections below and open the thing
+Issues and pull requests are welcome. This is a small project, so nothing here is heavy — read the sections below and open the thing
 
 ## AI assistance
 
@@ -29,5 +29,16 @@ npm run build
 One commit per logical change. `manifest.json` and `versions.json` are written by `npm version`, not edited by hand
 
 Commit messages: a short imperative subject saying what changes, and a body for why, if the why is not obvious
+
+## Releasing
+
+```sh
+npm version minor   # or patch, or major
+git push origin main --follow-tags
+```
+
+`package.json` holds the version. `npm version` writes it there and into `package-lock.json`, `version-bump.mjs` copies it into `manifest.json` and `versions.json`, and npm commits the four as `Release X.Y.Z` with an annotated tag `X.Y.Z` on that commit. The tag has no `v` in front, because Obsidian installs the release whose tag equals the version in `manifest.json`
+
+Pushing the tag runs `.github/workflows/release.yml`: it refuses a tag that disagrees with the tagged commit's `manifest.json` or `package.json`, runs the checks, builds, and publishes `main.js`, `manifest.json` and `styles.css` as the release. A pushed tag is never moved — a wrong release is followed by the next patch. Before pushing a tag, go through [TESTING.md](TESTING.md)
 
 By contributing you agree that your work is released under this repository's licence
