@@ -1,17 +1,19 @@
 # Media Gallery
 
-Media Gallery is an Obsidian community plugin for rendering image, GIF, video, and audio galleries directly inside notes.
+[![Release](https://img.shields.io/github/v/release/rokokol/obsidian-media-gallery?style=for-the-badge&logo=obsidian&color=7c3aed)](https://github.com/rokokol/obsidian-media-gallery/releases/latest)
+[![Downloads](https://img.shields.io/github/downloads/rokokol/obsidian-media-gallery/total?style=for-the-badge&color=22c55e)](https://github.com/rokokol/obsidian-media-gallery/releases)
+[![License](https://img.shields.io/github/license/rokokol/obsidian-media-gallery?style=for-the-badge&color=64748b)](LICENSE)
+
+Media Gallery is an Obsidian community plugin for rendering image, GIF, video, and audio galleries directly inside notes
 
 <img width="1920" height="1080" alt="preview" src="https://github.com/user-attachments/assets/7cfa63d7-8648-4dbd-8e48-eb82dc22ebf7" />
 
-It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugin and keeps compatibility with the original `img-gallery` syntax while adding a broader mixed-media workflow.
+It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugin, which [ATTRIBUTION.md](ATTRIBUTION.md) credits, and keeps compatibility with the original `img-gallery` syntax while adding a broader mixed-media workflow
 
-> **Flexible and convenient gallery for images, GIFs, videos, and music.**
+> **Flexible and convenient gallery for images, GIFs, videos, and music**
 
 ## Contents
 
-- [Attribution](#attribution)
-- [Version Lineage](#version-lineage)
 - [Highlights](#highlights)
 - [Supported Media](#supported-media)
 - [Block Aliases](#block-aliases)
@@ -46,18 +48,6 @@ It started as a fork and extensive rework of Luca Orio's **Image Gallery** plugi
 - [Development Notes](#development-notes)
   - [Local validation](#local-validation)
 
-## Attribution
-
-This plugin is based on `obsidian-image-gallery` by Luca Orio and was substantially extended for mixed-media use cases by `rokokol`.
-
-- Original project: `https://github.com/lucaorio/obsidian-image-gallery`
-- Original license: `MIT`
-
-## Version Lineage
-
-- `1.0.0`–`1.1.1` — original `obsidian-image-gallery` releases by Luca Orio
-- `2.0.0` — first `Media Gallery` release by `rokokol`
-
 ## Highlights
 
 - Renders galleries from a folder path or an explicit list of embedded files
@@ -78,11 +68,11 @@ This plugin is based on `obsidian-image-gallery` by Luca Orio and was substantia
 
 The preferred code block name is:
 
-````markdown
+~~~~markdown
 ```media-gallery
 ...
 ```
-````
+~~~~
 
 The following legacy aliases are also supported:
 
@@ -99,9 +89,9 @@ https://github.com/user-attachments/assets/b0a7af89-3c26-4a6e-97ea-a22f0b3843ed
 
 ### 1. Folder-Based Gallery
 
-Use a vault-relative folder path to build a gallery dynamically.
+Use a vault-relative folder path to build a gallery dynamically
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: media/Trip to Kazan
 type: vertical
@@ -109,23 +99,23 @@ columns: 2
 sortby: mtime
 sort: desc
 ```
-````
+~~~~
 
-This mode scans the folder recursively. If `path` is omitted or set to `*`, `**`, `.`, or `/`, the plugin searches the whole vault.
+This mode scans the folder recursively. If `path` is omitted or set to `*`, `**`, `.`, or `/`, the plugin searches the whole vault
 
 You can also use path patterns:
 
 - `path: media/**` — recursive search under `media/`
 - `path: media/*` — only direct children of `media/`
-- By default, flexible wildcard patterns match **file names**, while the directory part only narrows the search scope.
-- Example: `cats/cat?` matches `cats/cat1.png` and `cats/cat2.jpg`.
-- This behavior can be disabled in plugin settings if you want wildcards to match the full path instead.
+- By default, flexible wildcard patterns match **file names**, while the directory part only narrows the search scope
+- Example: `cats/cat?` matches `cats/cat1.png` and `cats/cat2.jpg`
+- This behavior can be disabled in plugin settings if you want wildcards to match the full path instead
 
 ### 2. Explicit Media List
 
-Use embedded wiki-links, markdown image links, or direct paths/URLs.
+Use embedded wiki-links, markdown image links, or direct paths/URLs
 
-````markdown
+~~~~markdown
 ```media-gallery
 columns: 2
 type: vertical
@@ -134,15 +124,15 @@ type: vertical
 ![[clip.mp4]]
 ![[track.mp3]]
 ```
-````
+~~~~
 
-This mode is ideal for `Media Dump` sections in daily, weekly, yearly, and hub notes.
+This mode is ideal for `Media Dump` sections in daily, weekly, yearly, and hub notes
 
 ### 3. Combined Folder + Explicit Media
 
-You can combine `path` with explicit embeds in the same block. The plugin loads media from the folder first, then appends explicitly listed items, while deduplicating identical entries by path.
+You can combine `path` with explicit embeds in the same block. The plugin loads media from the folder first, then appends explicitly listed items, while deduplicating identical entries by path
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: media/Trip to Kazan
 columns: 2
@@ -151,11 +141,11 @@ type: vertical
 ![[special-video-outside-folder.mp4]]
 ![[favorite-track.mp3]]
 ```
-````
+~~~~
 
 ## Settings Inside the Block
 
-The plugin accepts YAML-like modifiers at the top of the block.
+The plugin accepts YAML-like modifiers at the top of the block
 
 | Option | Default | Values | Notes |
 | --- | --- | --- | --- |
@@ -223,7 +213,7 @@ https://github.com/user-attachments/assets/6f7ff6e7-17e1-46a0-bed1-d2fd9ad9118f
 
 ### Example: Audio-Heavy Block
 
-````markdown
+~~~~markdown
 ```media-gallery
 type: vertical
 columns: 2
@@ -233,7 +223,7 @@ spectrogram: true
 ![[track-02.flac]]
 ![[track-03.m4a]]
 ```
-````
+~~~~
 
 ## Plugin Settings
 
@@ -284,7 +274,7 @@ spectrogram: true
 
 ### Mixed Media Dump
 
-````markdown
+~~~~markdown
 ```media-gallery
 columns: 2
 type: vertical
@@ -294,41 +284,41 @@ type: vertical
 ![[clip.mp4]]
 ![[voice-note.mp3]]
 ```
-````
+~~~~
 
 ### Search the Entire Vault
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: "*"
 type: vertical
 columns: 2
 ```
-````
+~~~~
 
-`path: "**"` works the same way as `path: "*"`.
+`path: "**"` works the same way as `path: "*"`
 
 ### Path Patterns
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: media/**
 type: vertical
 columns: 2
 ```
-````
+~~~~
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: media/*
 type: vertical
 columns: 2
 ```
-````
+~~~~
 
 ### Filters
 
-````markdown
+~~~~markdown
 ```media-gallery
 path: media/**
 extensions: jpg, png, mp4
@@ -339,11 +329,11 @@ seed: trip-2025
 type: vertical
 columns: 2
 ```
-````
+~~~~
 
 ### Horizontal Strip
 
-````markdown
+~~~~markdown
 ```media-gallery
 type: horizontal
 height: 280
@@ -353,11 +343,11 @@ gutter: 12
 ![[photo-2.jpg]]
 ![[photo-3.jpg]]
 ```
-````
+~~~~
 
 ### Gentle Mosaic
 
-````markdown
+~~~~markdown
 ```media-gallery
 type: mosaic
 fit: contain
@@ -367,14 +357,14 @@ height: 280
 ![[photo-2.jpg]]
 ![[photo-3.jpg]]
 ```
-````
+~~~~
 
 ## Installing from Source
 
-1. Build or copy `main.js`, `manifest.json`, and `styles.css`.
-2. Place them in your vault under `.obsidian/plugins/media-gallery/`.
-3. Reload Obsidian.
-4. Enable **Media Gallery** in Community Plugins.
+1. Build or copy `main.js`, `manifest.json`, and `styles.css`
+2. Place them in your vault under `.obsidian/plugins/media-gallery/`
+3. Reload Obsidian
+4. Enable **Media Gallery** in Community Plugins
 
 ## Development Notes
 
@@ -387,12 +377,8 @@ npm run lint
 npm run build
 ```
 
-`npm run lint` uses `eslint-plugin-obsidianmd`, which is the same family of checks recommended by the Obsidian submission bot for local preflight validation.
+`npm run lint` uses `eslint-plugin-obsidianmd`, which is the same family of checks recommended by the Obsidian submission bot for local preflight validation
 
-Use `npm run check:types`, `npm run lint`, and `npm run build` before release changes. `src/` is now the source of truth for the shipped `main.js`.
+Use `npm run check:types`, `npm run lint`, and `npm run build` before release changes. `src/` is now the source of truth for the shipped `main.js`
 
-Path errors can be disabled in plugin settings via `Show path and empty-gallery errors` if you prefer empty blocks over inline error messages.
-
-- The plugin in this repository was prepared from a working vault plugin and exported into release-ready root files.
-- The release id is `media-gallery`.
-- The current release version is `2.0.0`.
+Path errors can be disabled in plugin settings via `Show path and empty-gallery errors` if you prefer empty blocks over inline error messages
