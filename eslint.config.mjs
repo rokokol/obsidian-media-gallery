@@ -8,7 +8,7 @@ const tsconfigRootDir = path.dirname(fileURLToPath(import.meta.url))
 
 export default tseslint.config(
   {
-    ignores: ['build/**', 'node_modules/**', 'main.js', 'media-gallery/**'],
+    ignores: ['build/**', 'node_modules/**', 'main.js'],
   },
   // Obsidian community-plugin review rules (manifest, API usage, etc.).
   ...obsidianmd.configs.recommended,
