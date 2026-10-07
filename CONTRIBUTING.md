@@ -22,9 +22,13 @@ Where the split is genuinely unclear, a bare `Assisted-by:` with no suffix is th
 ## Before a pull request
 
 ```sh
+npm run lint
+npm run check:since
 npm run test
 npm run build
 ```
+
+`check:since` fails when the sources use Obsidian API that is newer than `minAppVersion` in `manifest.json`, as the community directory's review does. Lint misses some of those calls. Raise `minAppVersion` or drop the call, because the directory ignores `eslint-disable` comments
 
 One commit per logical change. `manifest.json` and `versions.json` are written by `npm version`, not edited by hand
 

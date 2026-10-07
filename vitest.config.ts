@@ -4,7 +4,7 @@ import { defineConfig } from 'vitest/config'
 export default defineConfig({
   test: {
     environment: 'jsdom',
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', 'test/**/*.test.ts'],
     // jsdom lacks Obsidian's createEl/createDiv/createSpan helpers
     setupFiles: ['./test/obsidian-dom.ts'],
     alias: {

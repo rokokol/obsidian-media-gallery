@@ -14,9 +14,13 @@ on:
         required: false
         default: ""
 
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
@@ -45,6 +49,11 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      # The directory rejects a call to Obsidian API newer than minAppVersion, and the lint
+      # rule for it misses some
+      - name: Obsidian API is not newer than minAppVersion
+        run: npm run check:since
 
       - name: Test
         run: npm test

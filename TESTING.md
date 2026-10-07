@@ -8,6 +8,7 @@ Use this checklist before pushing a release or asking the Obsidian review bot to
 npm ci
 npm run check:types
 npm run lint
+npm run check:since
 ```
 
 ## Runtime checks in Obsidian

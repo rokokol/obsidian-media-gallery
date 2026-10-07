@@ -7,6 +7,7 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "check:types": "tsc -noEmit -skipLibCheck",
+    "check:since": "node check-since.mjs",
     "lint": "eslint src package.json styles.css --no-warn-ignored",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
