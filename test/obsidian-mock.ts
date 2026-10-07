@@ -55,5 +55,37 @@ export const requestUrl = (): Promise<{ arrayBuffer: ArrayBuffer }> =>
 export class Component {}
 export class MarkdownRenderChild {}
 export class Plugin {}
-export class PluginSettingTab {}
-export class Setting {}
+export class PluginSettingTab {
+  containerEl = createDiv()
+  constructor(public app: unknown, public plugin: unknown) {}
+  update(): void {}
+}
+
+// Records what a settings tab builds, so a test can read the rows back
+export class ToggleComponent {
+  value = false
+  disabled = false
+  tooltip = ''
+  handler: ((value: boolean) => unknown) | null = null
+  setValue(value: boolean): this { this.value = value; return this }
+  setDisabled(disabled: boolean): this { this.disabled = disabled; return this }
+  setTooltip(tooltip: string): this { this.tooltip = tooltip; return this }
+  onChange(handler: (value: boolean) => unknown): this { this.handler = handler; return this }
+}
+
+export class Setting {
+  static created: Setting[] = []
+  name = ''
+  desc = ''
+  heading = false
+  toggle: ToggleComponent | null = null
+  constructor(public containerEl: HTMLElement) { Setting.created.push(this) }
+  setName(name: string): this { this.name = name; return this }
+  setDesc(desc: string): this { this.desc = desc; return this }
+  setHeading(): this { this.heading = true; return this }
+  addToggle(cb: (toggle: ToggleComponent) => unknown): this {
+    this.toggle = new ToggleComponent()
+    cb(this.toggle)
+    return this
+  }
+}
