@@ -1,12 +1,8 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { Setting } from 'obsidian'
+import { describe, expect, it, vi } from 'vitest'
 import type { SettingDefinitionControl, SettingDefinitionGroup } from 'obsidian'
 import { DEFAULT_PLUGIN_SETTINGS, galleryRuntimeSettings } from './runtime-settings'
 import { ImgGallerySettingTab } from './settings-tab'
 import type { SettingsHost } from './settings-tab'
-
-// The mock Setting records its rows; see test/obsidian-mock.ts
-type RecordedSetting = Setting & { name: string; heading: boolean; toggle: { value: boolean; disabled: boolean; tooltip: string; handler: (value: boolean) => unknown } | null }
 
 const makeTab = (overrides: Partial<typeof DEFAULT_PLUGIN_SETTINGS> = {}) => {
   const plugin = {
@@ -24,24 +20,15 @@ const makeTab = (overrides: Partial<typeof DEFAULT_PLUGIN_SETTINGS> = {}) => {
 const controls = (tab: ImgGallerySettingTab): SettingDefinitionControl[] =>
   tab.getSettingDefinitions().flatMap((item) => (item as SettingDefinitionGroup).items ?? []) as SettingDefinitionControl[]
 
-const mockSetting = Setting as unknown as { created: RecordedSetting[] }
-const rows = (): RecordedSetting[] => mockSetting.created
-
-// The tab keeps display() for Obsidian before 1.13, and these tests are what covers it. The
-// typings mark display() deprecated, so the call goes through a type that only has display()
-const draw = (tab: ImgGallerySettingTab): void => {
-  const fallback: { display: () => void } = tab
-  fallback.display()
-}
-
-beforeEach(() => {
-  mockSetting.created = []
-})
-
 describe('getSettingDefinitions', () => {
   it('has one toggle for every plugin setting', () => {
     const keys = controls(makeTab().tab).map((def) => def.control.key).sort()
     expect(keys).toEqual(Object.keys(DEFAULT_PLUGIN_SETTINGS).sort())
+  })
+
+  it('groups the toggles under the three headings', () => {
+    const headings = makeTab().tab.getSettingDefinitions().map((item) => (item as SettingDefinitionGroup).heading)
+    expect(headings).toEqual(['Performance', 'Paths', 'Audio'])
   })
 
   it('disables the file-name toggle exactly while flexible patterns are off', () => {
@@ -109,46 +96,3 @@ describe('getControlValue', () => {
   })
 })
 
-describe('display (Obsidian before 1.13)', () => {
-  it('draws a heading per group and a toggle per setting, in the order of the definitions', () => {
-    const { tab } = makeTab()
-    draw(tab)
-
-    const headings = rows().filter((row) => row.heading).map((row) => row.name)
-    expect(headings).toEqual(['Performance', 'Paths', 'Audio'])
-
-    const names = rows().filter((row) => row.toggle).map((row) => row.name)
-    expect(names).toEqual(controls(tab).map((def) => def.name))
-  })
-
-  it('shows the stored values', () => {
-    const { tab } = makeTab({ autoplayAudioOnOpen: false })
-    draw(tab)
-
-    const autoplay = rows().find((row) => row.name === 'Autoplay audio on open')
-    expect(autoplay?.toggle?.value).toBe(false)
-  })
-
-  it('disables the file-name toggle with a tooltip while flexible patterns are off', () => {
-    const { tab } = makeTab({ enableFlexiblePathPatterns: false })
-    draw(tab)
-
-    const wildcard = rows().find((row) => row.name === 'Match wildcards against file names')
-    expect(wildcard?.toggle?.disabled).toBe(true)
-    expect(wildcard?.toggle?.tooltip).toBe('Enable flexible path patterns first')
-  })
-
-  it('turns the file-name toggle off and disables it when flexible patterns are switched off', async () => {
-    const { plugin, tab } = makeTab()
-    draw(tab)
-    const flexible = rows().find((row) => row.name === 'Enable flexible path patterns')
-    const wildcard = rows().find((row) => row.name === 'Match wildcards against file names')
-    expect(wildcard?.toggle?.value).toBe(true)
-
-    await flexible?.toggle?.handler(false)
-
-    expect(plugin.settings.enableFlexiblePathPatterns).toBe(false)
-    expect(wildcard?.toggle?.value).toBe(false)
-    expect(wildcard?.toggle?.disabled).toBe(true)
-  })
-})

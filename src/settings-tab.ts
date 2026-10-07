@@ -1,5 +1,5 @@
-import { PluginSettingTab, Setting } from 'obsidian'
-import type { Plugin, SettingDefinitionItem, ToggleComponent } from 'obsidian'
+import { PluginSettingTab } from 'obsidian'
+import type { Plugin, SettingDefinitionItem } from 'obsidian'
 import { DEFAULT_PLUGIN_SETTINGS, galleryRuntimeSettings } from './runtime-settings'
 import type { MediaGalleryPluginSettings } from './types'
 
@@ -27,8 +27,8 @@ interface GroupSpec {
 const FLEXIBLE_PATTERNS: SettingKey = 'enableFlexiblePathPatterns'
 const WILDCARD_FILE_NAMES: SettingKey = 'matchWildcardsAgainstFileNames'
 
-// The one list of what the tab shows. Obsidian 1.13 and later render it from
-// getSettingDefinitions(); older versions call display(), which renders the same list
+// The one list of what the tab shows; getSettingDefinitions() turns it into the declarative
+// definitions that Obsidian renders
 const GROUPS: GroupSpec[] = [
   {
     heading: 'Performance',
@@ -126,15 +126,6 @@ export class ImgGallerySettingTab extends PluginSettingTab {
   }
 
   async setControlValue(key: string, value: unknown): Promise<void> {
-    await this.applyToggle(key, value)
-    if (key === FLEXIBLE_PATTERNS) {
-      // The wildcard toggle's value and disabled state follow this one; update() draws
-      // the tab again, which refreshDomState() alone does not do for a value
-      this.update()
-    }
-  }
-
-  private async applyToggle(key: string, value: unknown): Promise<void> {
     if (typeof value !== 'boolean' || !isSettingKey(key)) return
     if (key === WILDCARD_FILE_NAMES && !this.isWildcardFileNamesAvailable()) return
 
@@ -149,44 +140,11 @@ export class ImgGallerySettingTab extends PluginSettingTab {
       plugin.invalidateImageCache()
     }
     await plugin.saveSettings()
-  }
 
-  // Only Obsidian before 1.13 calls this; later versions render getSettingDefinitions()
-  display(): void {
-    const { containerEl } = this
-    containerEl.empty()
-
-    let wildcardFileNamesToggle: ToggleComponent | null = null
-    const syncWildcardFileNamesToggle = (): void => {
-      if (wildcardFileNamesToggle === null) return
-
-      const available = this.isWildcardFileNamesAvailable()
-      wildcardFileNamesToggle.setTooltip(available ? '' : 'Enable flexible path patterns first')
-      wildcardFileNamesToggle.setDisabled(!available)
-      wildcardFileNamesToggle.setValue(this.getControlValue(WILDCARD_FILE_NAMES) === true)
+    if (key === FLEXIBLE_PATTERNS) {
+      // The file-name toggle's value and disabled state follow this one; update() draws
+      // the tab again, which refreshDomState() alone does not do for a value
+      this.update()
     }
-
-    GROUPS.forEach((group) => {
-      new Setting(containerEl)
-        .setName(group.heading)
-        .setHeading()
-
-      group.toggles.forEach((spec) => {
-        new Setting(containerEl)
-          .setName(spec.name)
-          .setDesc(spec.desc)
-          .addToggle((toggle) => {
-            toggle.setValue(this.getControlValue(spec.key) === true)
-            if (spec.key === WILDCARD_FILE_NAMES) {
-              wildcardFileNamesToggle = toggle
-              syncWildcardFileNamesToggle()
-            }
-            return toggle.onChange(async (value) => {
-              await this.applyToggle(spec.key, value)
-              if (spec.key === FLEXIBLE_PATTERNS) syncWildcardFileNamesToggle()
-            })
-          })
-      })
-    })
   }
 }

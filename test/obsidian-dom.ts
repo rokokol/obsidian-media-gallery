@@ -28,4 +28,3 @@ const proto = Node.prototype as unknown as Record<string, unknown>
 proto.createEl = function (this: Node, tag: string, info?: string | ElementInfo) { return append(this, tag, info) }
 proto.createDiv = function (this: Node, info?: string | ElementInfo) { return append(this, 'div', info) }
 proto.createSpan = function (this: Node, info?: string | ElementInfo) { return append(this, 'span', info) }
-proto.empty = function (this: Node) { this.textContent = '' }
