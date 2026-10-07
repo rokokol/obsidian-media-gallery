@@ -146,6 +146,7 @@ body.theme-light .btn-glob-search {
 }
 
 .lg-container {
+  /* eslint-disable-next-line css/font-family-fallbacks -- the emoji fonts after sans-serif are the usual system stack: the browser asks them only for glyphs the earlier fonts lack */
   font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
 }
 

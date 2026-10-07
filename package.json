@@ -7,7 +7,7 @@
     "dev": "node esbuild.config.mjs",
     "build": "tsc -noEmit -skipLibCheck && node esbuild.config.mjs production",
     "check:types": "tsc -noEmit -skipLibCheck",
-    "lint": "eslint src package.json --no-warn-ignored",
+    "lint": "eslint src package.json styles.css --no-warn-ignored",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -29,6 +29,7 @@
   ],
   "license": "MIT",
   "devDependencies": {
+    "@eslint/css": "^2.0.0",
     "@eslint/js": "^9.39.1",
     "@eslint/json": "^0.14.0",
     "@types/js-yaml": "^4.0.5",
