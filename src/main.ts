@@ -136,7 +136,7 @@ export default class ImgGallery extends Plugin implements MediaCacheHost {
 
   async loadSettings(): Promise<void> {
     const rawLoaded: unknown = await this.loadData()
-    const loaded: LoadedSettings = isRecord(rawLoaded) ? rawLoaded as LoadedSettings : {}
+    const loaded: LoadedSettings = isRecord(rawLoaded) ? rawLoaded : {}
 
     this.settings = {
       ...DEFAULT_PLUGIN_SETTINGS,

@@ -15,8 +15,10 @@ import {
   isVideoExtension,
   mergeMediaEntries,
   normalizeMediaSearchPath,
+  parseExplicitBlock,
 } from './get-imgs-list'
 import { getDefaultGallerySettings } from './get-settings'
+import type { App } from 'obsidian'
 import type { MediaEntry } from './types'
 
 const entry = (path: string): MediaEntry => ({
@@ -123,5 +125,44 @@ describe('ordering and limits', () => {
   it('dedupes merged entries by path', () => {
     const merged = mergeMediaEntries([entry('a.png'), entry('b.png')], [entry('b.png'), entry('c.png')])
     expect(merged.map((item) => item.path)).toEqual(['a.png', 'b.png', 'c.png'])
+  })
+})
+
+describe('parseExplicitBlock', () => {
+  // Setting lines never reach the vault, so the app is not read
+  const parse = (...lines: string[]) => parseExplicitBlock({} as App, lines.join('\n'), 'note.md')
+
+  it('coerces each kind of known key', () => {
+    const { overrides, hasMediaLines } = parse(
+      'radius: 12',
+      'Gutter: 4',
+      'waveform: yes',
+      'spectrogram: off',
+      'extensions: [jpg, png]',
+      'exclude: a, b',
+      'seed: 42',
+    )
+
+    expect(overrides).toEqual({
+      radius: 12,
+      gutter: 4,
+      waveform: true,
+      spectrogram: false,
+      extensions: ['jpg', 'png'],
+      exclude: ['a', 'b'],
+      seed: '42',
+    })
+    expect(hasMediaLines).toBe(false)
+  })
+
+  it('keeps the other known keys as written and skips a non-numeric number', () => {
+    const { overrides } = parse('type: mosaic', 'path: media/2024', 'limit: lots')
+    expect(overrides).toEqual({ type: 'mosaic', path: 'media/2024' })
+  })
+
+  it('treats an unknown key as a media line', () => {
+    const { overrides, hasMediaLines } = parse('colour: red')
+    expect(overrides).toEqual({})
+    expect(hasMediaLines).toBe(true)
   })
 })

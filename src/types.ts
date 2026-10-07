@@ -44,8 +44,6 @@ export interface GallerySettingsInput {
   height?: unknown
 }
 
-export type GallerySettingsOverride = Partial<GallerySettings>
-
 export interface AudioMetadata {
   artworkUrl: string | null
   title: string | null

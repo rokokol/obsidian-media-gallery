@@ -2,7 +2,7 @@ import { App, Notice, TFile, TFolder, normalizePath, requestUrl } from 'obsidian
 import renderError from './render-error'
 import { galleryRuntimeSettings } from './runtime-settings'
 import { normalizeListSetting, normalizeSeedSetting } from './utils'
-import type { AudioMetadata, GallerySettings, GallerySettingsOverride, MediaCacheHost, MediaEntry, MediaKind } from './types'
+import type { AudioMetadata, GallerySettings, GallerySettingsInput, MediaCacheHost, MediaEntry, MediaKind } from './types'
 
 export { normalizeListSetting, normalizeSeedSetting }
 
@@ -622,11 +622,36 @@ export const applyMediaOrderingAndLimit = <T>(items: T[], settings: GallerySetti
   return applyMediaLimit(orderedItems, settings.limit)
 }
 
-export const parseExplicitBlock = (app: App, src: string, sourcePath: string): { images: MediaEntry[]; overrides: GallerySettingsOverride; hasMediaLines: boolean } => {
+// The record type makes the compiler demand an entry for every key of GallerySettingsInput,
+// so this list cannot drift from the type
+const knownKeys: Record<keyof GallerySettingsInput, true> = {
+  type: true,
+  radius: true,
+  gutter: true,
+  sortby: true,
+  sort: true,
+  mobile: true,
+  columns: true,
+  height: true,
+  path: true,
+  fit: true,
+  waveform: true,
+  spectrogram: true,
+  extensions: true,
+  exclude: true,
+  limit: true,
+  seed: true,
+}
+
+const isKnownKey = (key: string): key is keyof GallerySettingsInput =>
+  Object.prototype.hasOwnProperty.call(knownKeys, key)
+
+// The overrides are the values as the block wrote them, not yet checked against the
+// layout, sort and fit names; the caller merges them into the settings
+export const parseExplicitBlock = (app: App, src: string, sourcePath: string): { images: MediaEntry[]; overrides: GallerySettingsInput; hasMediaLines: boolean } => {
   const lines = src.split('\n').map((line) => line.trim()).filter(Boolean)
-  const overrides: GallerySettingsOverride = {}
+  const overrides: GallerySettingsInput = {}
   const mediaLines: string[] = []
-  const knownKeys = new Set(['type', 'radius', 'gutter', 'sortby', 'sort', 'mobile', 'columns', 'height', 'path', 'fit', 'waveform', 'spectrogram', 'extensions', 'exclude', 'limit', 'seed'])
 
   lines.forEach((line) => {
     const match = /^([A-Za-z][A-Za-z0-9_-]*)\s*:\s*(.+)$/.exec(line)
@@ -637,7 +662,7 @@ export const parseExplicitBlock = (app: App, src: string, sourcePath: string): {
 
     const key = match[1].toLowerCase()
     const rawValue = match[2].trim()
-    if (!knownKeys.has(key)) {
+    if (!isKnownKey(key)) {
       mediaLines.push(line)
       return
     }
@@ -645,27 +670,27 @@ export const parseExplicitBlock = (app: App, src: string, sourcePath: string): {
     if (key === 'radius' || key === 'gutter' || key === 'mobile' || key === 'columns' || key === 'height' || key === 'limit') {
       const numeric = Number(rawValue)
       if (!Number.isNaN(numeric)) {
-        overrides[key] = numeric as never
+        overrides[key] = numeric
       }
       return
     }
 
     if (key === 'waveform' || key === 'spectrogram') {
-      overrides[key] = /^(true|1|yes|on)$/i.test(rawValue) as never
+      overrides[key] = /^(true|1|yes|on)$/i.test(rawValue)
       return
     }
 
     if (key === 'extensions' || key === 'exclude') {
-      overrides[key] = normalizeListSetting(rawValue) as never
+      overrides[key] = normalizeListSetting(rawValue)
       return
     }
 
     if (key === 'seed') {
-      overrides[key] = normalizeSeedSetting(rawValue) as never
+      overrides[key] = normalizeSeedSetting(rawValue)
       return
     }
 
-    overrides[key as keyof GallerySettingsOverride] = rawValue as never
+    overrides[key] = rawValue
   })
 
   return {
