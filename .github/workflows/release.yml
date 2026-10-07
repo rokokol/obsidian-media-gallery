@@ -16,6 +16,9 @@ jobs:
     timeout-minutes: 10
     permissions:
       contents: write
+      # The attestation step signs with the run's OIDC token and stores the result
+      id-token: write
+      attestations: write
     steps:
       - uses: actions/checkout@v4
 
@@ -47,6 +50,16 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      # Signs where the three files came from: this repository, this workflow and this commit.
+      # A user checks a downloaded file with `gh attestation verify FILE --repo OWNER/REPO`
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@v4
+        with:
+          subject-path: |
+            main.js
+            manifest.json
+            styles.css
 
       - name: Create release
         env:
