@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getDefaultGallerySettings, getSettings } from './get-settings'
 
-const container = (): HTMLElement => document.createElement('div')
+const container = (): HTMLElement => createDiv()
 
 describe('getDefaultGallerySettings', () => {
   it('returns sane defaults', () => {

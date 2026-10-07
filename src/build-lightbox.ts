@@ -27,8 +27,8 @@ const logMediaError = (error: unknown): void => {
 const createMediaModalShell = (kind: 'video' | 'audio', onClose: () => void): MediaModalShell => {
   const modalClass = `img-gallery-${kind}-modal`
   const hiddenClass = `${modalClass}-hidden`
-  const modal = document.body.createEl('div', { cls: `${modalClass} ${hiddenClass}` })
-  const content = modal.createEl('div', { cls: `${modalClass}-content` })
+  const modal = document.body.createDiv({ cls: `${modalClass} ${hiddenClass}` })
+  const content = modal.createDiv({ cls: `${modalClass}-content` })
   const close = content.createEl('button', { cls: `${modalClass}-close`, text: '×' })
 
   const escHandler = (event: KeyboardEvent): void => {
@@ -51,7 +51,7 @@ const createMediaModalShell = (kind: 'video' | 'audio', onClose: () => void): Me
 const createVideoModal = (): MediaModalController => {
   let close = (): void => {}
   const shell = createMediaModalShell('video', () => { close(); })
-  const title = shell.content.createEl('div', { cls: 'img-gallery-video-modal-title' })
+  const title = shell.content.createDiv({ cls: 'img-gallery-video-modal-title' })
   const video = shell.content.createEl('video', { cls: 'img-gallery-video-modal-player' })
   video.controls = true
   video.playsInline = true
@@ -91,9 +91,9 @@ const createAudioModal = (app: App): MediaModalController => {
   let close = (): void => {}
 
   const shell = createMediaModalShell('audio', () => { close(); })
-  const title = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-title' })
-  const subtitle = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-subtitle is-empty' })
-  const cover = shell.content.createEl('div', { cls: 'img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty' })
+  const title = shell.content.createDiv({ cls: 'img-gallery-audio-modal-title' })
+  const subtitle = shell.content.createDiv({ cls: 'img-gallery-audio-modal-subtitle is-empty' })
+  const cover = shell.content.createDiv({ cls: 'img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty' })
   const audio = shell.content.createEl('audio', { cls: 'img-gallery-audio-modal-player' })
   audio.controls = true
   audio.preload = 'metadata'

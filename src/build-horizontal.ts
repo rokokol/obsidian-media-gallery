@@ -5,7 +5,7 @@ import type { GallerySettings, MediaEntry } from './types'
 
 const buildHorizontal = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
   const videoObserver = createVideoPreviewObserver(component)
-  const gallery = container.createEl('div')
+  const gallery = container.createDiv()
   gallery.addClass('grid-wrapper')
   gallery.addClass('media-gallery-grid-wrapper')
   gallery.addClass('media-gallery-grid-wrapper--horizontal')

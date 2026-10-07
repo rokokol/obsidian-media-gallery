@@ -5,7 +5,7 @@ import type { GallerySettings, MediaEntry } from './types'
 
 const buildVertical = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
   const videoObserver = createVideoPreviewObserver(component)
-  const gallery = container.createEl('div')
+  const gallery = container.createDiv()
   gallery.addClass('grid-wrapper')
   gallery.addClass('media-gallery-grid-wrapper')
   gallery.addClass('media-gallery-grid-wrapper--vertical')
@@ -15,7 +15,7 @@ const buildVertical = (app: App, container: HTMLElement, imagesList: MediaEntry[
   })
 
   imagesList.forEach((file) => {
-    const figure = gallery.createEl('div')
+    const figure = gallery.createDiv()
     figure.addClass('grid-item')
     figure.addClass('media-gallery-grid-item')
     figure.addClass('media-gallery-grid-item--vertical')

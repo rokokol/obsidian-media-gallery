@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     include: ['src/**/*.test.ts'],
+    // jsdom lacks Obsidian's createEl/createDiv/createSpan helpers
+    setupFiles: ['./test/obsidian-dom.ts'],
     alias: {
       // The `obsidian` runtime is provided by the app, not the npm package, so
       // tests resolve it to a lightweight mock.

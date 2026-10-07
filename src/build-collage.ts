@@ -52,7 +52,7 @@ const applyCollageFigureLayout = (figure: HTMLElement, imagesCount: number, inde
 }
 
 const buildCollage = (app: App, container: HTMLElement, imagesList: MediaEntry[], settings: GallerySettings, component: Component): HTMLElement => {
-  const gallery = container.createEl('div')
+  const gallery = container.createDiv()
   const imagesCount = imagesList.length
   const videoObserver = createVideoPreviewObserver(component)
   gallery.addClass('grid-wrapper')

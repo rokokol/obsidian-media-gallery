@@ -41,7 +41,7 @@ export const capturePoster = (video: HTMLVideoElement): void => {
 
   const snapshot = (): void => {
     try {
-      const canvas = document.createElement('canvas')
+      const canvas = createEl('canvas')
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
       const ctx = canvas.getContext('2d')
@@ -113,7 +113,7 @@ const renderWaveform = (container: HTMLElement, values: number[] | null): void =
   if (!values?.length) return
 
   values.forEach((value) => {
-    const bar = container.createEl('span', { cls: 'img-gallery-audio-waveform-bar' })
+    const bar = container.createSpan({ cls: 'img-gallery-audio-waveform-bar' })
     setCssProps(bar, {
       height: `${Math.max(8, Math.round(value * 44))}px`,
     })
@@ -169,7 +169,7 @@ const appendAudioVisualization = (app: App, meta: HTMLElement, file: MediaEntry,
   if (!galleryRuntimeSettings.enableAudioVisualizations) return
 
   if (settings.spectrogram) {
-    const spectrogram = meta.createEl('div', { cls: 'img-gallery-audio-spectrogram' })
+    const spectrogram = meta.createDiv({ cls: 'img-gallery-audio-spectrogram' })
     void getAudioSpectrogram(app, file, true)
       .then((values) => { renderSpectrogram(spectrogram, values); })
       .catch(logMediaError)
@@ -178,7 +178,7 @@ const appendAudioVisualization = (app: App, meta: HTMLElement, file: MediaEntry,
 
   if (!settings.waveform) return
 
-  const waveform = meta.createEl('div', { cls: 'img-gallery-audio-waveform' })
+  const waveform = meta.createDiv({ cls: 'img-gallery-audio-waveform' })
   void getAudioWaveform(app, file, true)
     .then((values) => { renderWaveform(waveform, values); })
     .catch(logMediaError)
@@ -208,13 +208,13 @@ const fillAudioPreviewArtwork = (app: App, file: MediaEntry, cover: HTMLElement)
 
 const appendAudioPreview = (app: App, figure: HTMLElement, file: MediaEntry, settings: GallerySettings): HTMLElement => {
   figure.addClass('img-gallery-audio-item')
-  const audioCard = figure.createEl('div', { cls: 'img-gallery-audio-card' })
-  const cover = audioCard.createEl('div', { cls: 'img-gallery-audio-cover' })
-  cover.createEl('div', { cls: 'img-gallery-audio-icon', text: '♪' })
-  const meta = audioCard.createEl('div', { cls: 'img-gallery-audio-meta' })
-  const nameEl = meta.createEl('div', { cls: 'img-gallery-audio-name', text: getMediaDisplayName(file) })
-  const subtitleEl = meta.createEl('div', { cls: 'img-gallery-audio-subtitle is-empty' })
-  meta.createEl('div', { cls: 'img-gallery-audio-kind', text: (file.path.split('.').pop() || 'audio').toUpperCase() })
+  const audioCard = figure.createDiv({ cls: 'img-gallery-audio-card' })
+  const cover = audioCard.createDiv({ cls: 'img-gallery-audio-cover' })
+  cover.createDiv({ cls: 'img-gallery-audio-icon', text: '♪' })
+  const meta = audioCard.createDiv({ cls: 'img-gallery-audio-meta' })
+  const nameEl = meta.createDiv({ cls: 'img-gallery-audio-name', text: getMediaDisplayName(file) })
+  const subtitleEl = meta.createDiv({ cls: 'img-gallery-audio-subtitle is-empty' })
+  meta.createDiv({ cls: 'img-gallery-audio-kind', text: (file.path.split('.').pop() || 'audio').toUpperCase() })
 
   appendAudioVisualization(app, meta, file, settings)
   fillAudioPreviewMetadata(app, file, nameEl, subtitleEl)

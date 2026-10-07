@@ -5,7 +5,7 @@ import { capturePoster } from './media-preview'
 // not implement decoding, so readyState/dimensions/duration are stubbed and the
 // `seeked` event is dispatched by hand to stand in for the seek completing.
 const makeVideo = (readyState: number): HTMLVideoElement => {
-  const video = document.createElement('video')
+  const video = createEl('video')
   Object.defineProperty(video, 'readyState', { value: readyState, configurable: true })
   Object.defineProperty(video, 'videoWidth', { value: 320, configurable: true })
   Object.defineProperty(video, 'videoHeight', { value: 180, configurable: true })
@@ -13,7 +13,8 @@ const makeVideo = (readyState: number): HTMLVideoElement => {
   return video
 }
 
-// Route the internal `document.createElement('canvas')` to a stub: jsdom has no
+// Route the internal `createEl('canvas')` (which the test setup maps to
+// `document.createElement`) to a stub: jsdom has no
 // 2D context, so we fake one and let toDataURL return a sentinel to assert on.
 // `getContext` returns null when `context` is false, exercising the failure path.
 const stubCanvas = (context: unknown = { drawImage: vi.fn() }, dataUrl = 'data:image/jpeg;base64,STUB'): void => {
