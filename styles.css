@@ -146,8 +146,23 @@ body.theme-light .btn-glob-search {
 }
 
 .lg-container {
-  /* eslint-disable-next-line css/font-family-fallbacks -- the emoji fonts after sans-serif are the usual system stack: the browser asks them only for glyphs the earlier fonts lack */
-  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', 'Liberation Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  /* eslint-disable css/font-family-fallbacks -- the emoji fonts after sans-serif are the
+   usual system stack: the browser asks them only for glyphs the earlier fonts lack */
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    "Helvetica Neue",
+    Arial,
+    "Noto Sans",
+    "Liberation Sans",
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+  /* eslint-enable css/font-family-fallbacks */
 }
 
 /* Obsidian gives every button a shadow, and a larger one on hover and focus. Three classes
@@ -191,8 +206,8 @@ body.theme-light .btn-glob-search {
   opacity: 1;
 }
 
-.lg-single-item .lg-next, .lg-single-item
-.lg-prev {
+.lg-single-item .lg-next,
+.lg-single-item .lg-prev {
   display: none;
 }
 
@@ -204,7 +219,7 @@ body.theme-light .btn-glob-search {
 }
 
 .lg-next:before {
-  content: '';
+  content: "";
 }
 
 .lg-prev {
@@ -215,7 +230,7 @@ body.theme-light .btn-glob-search {
 }
 
 .lg-prev:after {
-  content: '';
+  content: "";
 }
 
 @-webkit-keyframes lg-right-end {
@@ -369,7 +384,7 @@ body.theme-light .btn-glob-search {
 }
 
 .lg-toolbar .lg-close:after {
-  content: '';
+  content: "";
 }
 
 .lg-sub-html {
@@ -445,11 +460,16 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable) .lg-v
   -webkit-transform: scale3d(0.5, 0.5, 0.5);
   transform: scale3d(0.5, 0.5, 0.5);
   will-change: transform, opacity;
-  transition: transform 250ms cubic-bezier(0, 0, 0.25, 1) 0s, opacity 250ms cubic-bezier(0, 0, 0.25, 1);
+  transition:
+    transform 250ms cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 250ms cubic-bezier(0, 0, 0.25, 1);
 }
 
 body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-complete .lg-img-wrap,
-body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-complete .lg-video-cont {
+body:not(.lg-from-hash)
+  .lg-outer.lg-start-zoom
+  .lg-item:not(.lg-zoomable).lg-complete
+  .lg-video-cont {
   opacity: 1;
   -moz-transform: scale3d(1, 1, 1);
   -o-transform: scale3d(1, 1, 1);
@@ -470,7 +490,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 }
 
 .lg-group:after {
-  content: '';
+  content: "";
   display: table;
   clear: both;
 }
@@ -499,10 +519,18 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 .lg-hide-sub-html .lg-sub-html {
   opacity: 0;
   will-change: transform, opacity;
-  -webkit-transition: -webkit-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
-  -moz-transition: -moz-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
-  -o-transition: -o-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
-  transition: transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
+  -webkit-transition:
+    -webkit-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
+  -moz-transition:
+    -moz-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
+  -o-transition:
+    -o-transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
+  transition:
+    transform 0.25s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.25s cubic-bezier(0, 0, 0.25, 1) 0s;
 }
 
 .lg-show-in .lg-toolbar,
@@ -575,12 +603,16 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
    duration with the same specificity and come later, so these need !important to win. The
    slide then takes its speed from .lg-inner, where lightGallery writes it as an inline style */
 /* eslint-disable css/no-important -- overrides a later rule of equal specificity in this file */
-.lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-prev-slide, .lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-next-slide, .lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-current {
+.lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-prev-slide,
+.lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-next-slide,
+.lg-outer.lg-css3 .lg-item:not(.lg-start-end-progress).lg-current {
   transition-duration: inherit !important;
   transition-timing-function: inherit !important;
 }
 
-.lg-outer.lg-css3.lg-dragging .lg-item.lg-prev-slide, .lg-outer.lg-css3.lg-dragging .lg-item.lg-next-slide, .lg-outer.lg-css3.lg-dragging .lg-item.lg-current {
+.lg-outer.lg-css3.lg-dragging .lg-item.lg-prev-slide,
+.lg-outer.lg-css3.lg-dragging .lg-item.lg-next-slide,
+.lg-outer.lg-css3.lg-dragging .lg-item.lg-current {
   transition-duration: 0s !important;
   opacity: 1;
 }
@@ -641,7 +673,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 
 .lg-outer .lg-item:before,
 .lg-outer .lg-img-wrap:before {
-  content: '';
+  content: "";
   display: inline-block;
   height: 100%;
   vertical-align: middle;
@@ -753,7 +785,9 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
   opacity: 1;
 }
 
-.lg-css3.lg-fade .lg-item.lg-prev-slide, .lg-css3.lg-fade .lg-item.lg-next-slide, .lg-css3.lg-fade .lg-item.lg-current {
+.lg-css3.lg-fade .lg-item.lg-prev-slide,
+.lg-css3.lg-fade .lg-item.lg-next-slide,
+.lg-css3.lg-fade .lg-item.lg-current {
   -webkit-transition: opacity 0.1s ease 0s;
   -moz-transition: opacity 0.1s ease 0s;
   -o-transition: opacity 0.1s ease 0s;
@@ -794,11 +828,21 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
   opacity: 1;
 }
 
-.lg-css3.lg-slide.lg-use-css3 .lg-item.lg-prev-slide, .lg-css3.lg-slide.lg-use-css3 .lg-item.lg-next-slide, .lg-css3.lg-slide.lg-use-css3 .lg-item.lg-current {
-  -webkit-transition: -webkit-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.1s ease 0s;
-  -moz-transition: -moz-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.1s ease 0s;
-  -o-transition: -o-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.1s ease 0s;
-  transition: transform 1s cubic-bezier(0, 0, 0.25, 1) 0s, opacity 0.1s ease 0s;
+.lg-css3.lg-slide.lg-use-css3 .lg-item.lg-prev-slide,
+.lg-css3.lg-slide.lg-use-css3 .lg-item.lg-next-slide,
+.lg-css3.lg-slide.lg-use-css3 .lg-item.lg-current {
+  -webkit-transition:
+    -webkit-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.1s ease 0s;
+  -moz-transition:
+    -moz-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.1s ease 0s;
+  -o-transition:
+    -o-transform 1s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.1s ease 0s;
+  transition:
+    transform 1s cubic-bezier(0, 0, 0.25, 1) 0s,
+    opacity 0.1s ease 0s;
 }
 
 .lg-container {
@@ -834,7 +878,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 }
 
 .lg-inline .lg-maximize:after {
-  content: '';
+  content: "";
 }
 
 .lg-components {
@@ -946,7 +990,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 }
 
 .lg-outer .lg-toggle-thumb:after {
-  content: '';
+  content: "";
 }
 
 .lg-outer.lg-animate-thumb .lg-thumb {
@@ -966,11 +1010,10 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 
 .lg-toolbar .btn-glob-search:hover {
   opacity: 1;
-
 }
 
 .lg-toolbar .btn-glob-search:after {
-  content: '';
+  content: "";
 }
 
 .img-gallery-video-item {
@@ -978,7 +1021,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 }
 
 .img-gallery-video-item::after {
-  content: '▶';
+  content: "▶";
   position: absolute;
   right: 12px;
   bottom: 12px;
@@ -1211,7 +1254,7 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 }
 
 .img-gallery-audio-modal-cover-empty::before {
-  content: '♪';
+  content: "♪";
   font-size: 56px;
   color: var(--text-muted);
 }
@@ -1272,7 +1315,9 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 /* Smooth hover lift + shadow on every gallery tile. */
 .media-gallery-grid-item,
 .media-gallery-grid-wrapper .grid-item {
-  transition: transform 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
 }
 
 .media-gallery-grid-item--vertical {
@@ -1330,7 +1375,9 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
 
 /* Play badge: lift and tint on hover for a more tactile feel. */
 .img-gallery-video-item::after {
-  transition: transform 0.18s ease, background 0.18s ease;
+  transition:
+    transform 0.18s ease,
+    background 0.18s ease;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
@@ -1380,7 +1427,9 @@ body:not(.lg-from-hash) .lg-outer.lg-start-zoom .lg-item:not(.lg-zoomable).lg-co
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background 0.15s ease, transform 0.15s ease;
+  transition:
+    background 0.15s ease,
+    transform 0.15s ease;
 }
 
 .img-gallery-video-modal-close:hover,

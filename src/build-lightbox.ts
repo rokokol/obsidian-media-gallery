@@ -1,175 +1,195 @@
-import { App, Platform, TFile } from 'obsidian'
-import type { Component } from 'obsidian'
-import lightGallery from 'lightgallery'
-import lgThumbnail from 'lightgallery/plugins/thumbnail'
-import { getAudioArtworkUrl, getAudioMetadata, getAudioMimeType, getAudioSubtitle, getMediaDisplayName } from './get-imgs-list'
-import { galleryRuntimeSettings } from './runtime-settings'
-import setCssProps from './set-css-props'
-import type { LightGalleryInitEvent, LightGalleryInstance, MediaEntry, MediaModalController } from './types'
+import { App, Platform, TFile } from "obsidian";
+import type { Component } from "obsidian";
+import lightGallery from "lightgallery";
+import lgThumbnail from "lightgallery/plugins/thumbnail";
+import {
+  getAudioArtworkUrl,
+  getAudioMetadata,
+  getAudioMimeType,
+  getAudioSubtitle,
+  getMediaDisplayName,
+} from "./get-imgs-list";
+import { galleryRuntimeSettings } from "./runtime-settings";
+import setCssProps from "./set-css-props";
+import type {
+  LightGalleryInitEvent,
+  LightGalleryInstance,
+  MediaEntry,
+  MediaModalController,
+} from "./types";
 
-let videoModalSingleton: MediaModalController | null = null
-let audioModalSingleton: MediaModalController | null = null
+let videoModalSingleton: MediaModalController | null = null;
+let audioModalSingleton: MediaModalController | null = null;
 
 interface MediaModalShell {
-  modal: HTMLElement
-  content: HTMLElement
-  hiddenClass: string
-  removeEscListener: () => void
+  modal: HTMLElement;
+  content: HTMLElement;
+  hiddenClass: string;
+  removeEscListener: () => void;
 }
 
 const logMediaError = (error: unknown): void => {
-  console.error('Media Gallery', error)
-}
+  console.error("Media Gallery", error);
+};
 
 // Shared scaffold for the video and audio modals: full-screen overlay + content
 // box + close button, with background click, close button, and Escape all wired
 // to `onClose`. Title/subtitle/media are added by each caller.
-const createMediaModalShell = (kind: 'video' | 'audio', onClose: () => void): MediaModalShell => {
-  const modalClass = `img-gallery-${kind}-modal`
-  const hiddenClass = `${modalClass}-hidden`
-  const modal = document.body.createDiv({ cls: `${modalClass} ${hiddenClass}` })
-  const content = modal.createDiv({ cls: `${modalClass}-content` })
-  const close = content.createEl('button', { cls: `${modalClass}-close`, text: '×' })
+const createMediaModalShell = (kind: "video" | "audio", onClose: () => void): MediaModalShell => {
+  const modalClass = `img-gallery-${kind}-modal`;
+  const hiddenClass = `${modalClass}-hidden`;
+  const modal = document.body.createDiv({ cls: `${modalClass} ${hiddenClass}` });
+  const content = modal.createDiv({ cls: `${modalClass}-content` });
+  const close = content.createEl("button", { cls: `${modalClass}-close`, text: "×" });
 
   const escHandler = (event: KeyboardEvent): void => {
-    if (event.key === 'Escape' && !modal.hasClass(hiddenClass)) onClose()
-  }
-  modal.addEventListener('click', (event) => {
-    if (event.target === modal) onClose()
-  })
-  close.addEventListener('click', onClose)
-  document.addEventListener('keydown', escHandler)
+    if (event.key === "Escape" && !modal.hasClass(hiddenClass)) onClose();
+  };
+  modal.addEventListener("click", (event) => {
+    if (event.target === modal) onClose();
+  });
+  close.addEventListener("click", onClose);
+  document.addEventListener("keydown", escHandler);
 
   return {
     modal,
     content,
     hiddenClass,
-    removeEscListener: () => { document.removeEventListener('keydown', escHandler); },
-  }
-}
+    removeEscListener: () => {
+      document.removeEventListener("keydown", escHandler);
+    },
+  };
+};
 
 const createVideoModal = (): MediaModalController => {
-  let close = (): void => {}
-  const shell = createMediaModalShell('video', () => { close(); })
-  const title = shell.content.createDiv({ cls: 'img-gallery-video-modal-title' })
-  const video = shell.content.createEl('video', { cls: 'img-gallery-video-modal-player' })
-  video.controls = true
-  video.playsInline = true
-  video.preload = 'metadata'
+  let close = (): void => {};
+  const shell = createMediaModalShell("video", () => {
+    close();
+  });
+  const title = shell.content.createDiv({ cls: "img-gallery-video-modal-title" });
+  const video = shell.content.createEl("video", { cls: "img-gallery-video-modal-player" });
+  video.controls = true;
+  video.playsInline = true;
+  video.preload = "metadata";
 
   close = () => {
-    video.pause()
-    video.removeAttribute('src')
-    video.load()
-    shell.modal.addClass(shell.hiddenClass)
-  }
+    video.pause();
+    video.removeAttribute("src");
+    video.load();
+    shell.modal.addClass(shell.hiddenClass);
+  };
 
   return {
     open: (file) => {
-      title.setText(file.name)
-      video.src = file.uri
-      shell.modal.removeClass(shell.hiddenClass)
-      void video.play().catch(() => {})
+      title.setText(file.name);
+      video.src = file.uri;
+      shell.modal.removeClass(shell.hiddenClass);
+      void video.play().catch(() => {});
     },
     destroy: () => {
-      shell.removeEscListener()
-      close()
-      shell.modal.remove()
+      shell.removeEscListener();
+      close();
+      shell.modal.remove();
     },
-  }
-}
+  };
+};
 
 const getVideoModal = (): MediaModalController => {
   if (!videoModalSingleton) {
-    videoModalSingleton = createVideoModal()
+    videoModalSingleton = createVideoModal();
   }
-  return videoModalSingleton
-}
+  return videoModalSingleton;
+};
 
 const createAudioModal = (app: App): MediaModalController => {
-  let currentPath: string | null = null
-  let close = (): void => {}
+  let currentPath: string | null = null;
+  let close = (): void => {};
 
-  const shell = createMediaModalShell('audio', () => { close(); })
-  const title = shell.content.createDiv({ cls: 'img-gallery-audio-modal-title' })
-  const subtitle = shell.content.createDiv({ cls: 'img-gallery-audio-modal-subtitle is-empty' })
-  const cover = shell.content.createDiv({ cls: 'img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty' })
-  const audio = shell.content.createEl('audio', { cls: 'img-gallery-audio-modal-player' })
-  audio.controls = true
-  audio.preload = 'metadata'
+  const shell = createMediaModalShell("audio", () => {
+    close();
+  });
+  const title = shell.content.createDiv({ cls: "img-gallery-audio-modal-title" });
+  const subtitle = shell.content.createDiv({ cls: "img-gallery-audio-modal-subtitle is-empty" });
+  const cover = shell.content.createDiv({
+    cls: "img-gallery-audio-modal-cover img-gallery-audio-modal-cover-empty",
+  });
+  const audio = shell.content.createEl("audio", { cls: "img-gallery-audio-modal-player" });
+  audio.controls = true;
+  audio.preload = "metadata";
 
   close = () => {
-    currentPath = null
-    audio.pause()
-    audio.removeAttribute('src')
-    audio.removeAttribute('type')
-    audio.load()
-    shell.modal.addClass(shell.hiddenClass)
-  }
+    currentPath = null;
+    audio.pause();
+    audio.removeAttribute("src");
+    audio.removeAttribute("type");
+    audio.load();
+    shell.modal.addClass(shell.hiddenClass);
+  };
 
   return {
     open: (file) => {
-      currentPath = file.path
-      title.setText(getMediaDisplayName(file))
-      subtitle.setText('')
-      subtitle.addClass('is-empty')
-      audio.src = file.uri
-      audio.setAttribute('type', getAudioMimeType(file.path))
-      audio.currentTime = 0
-      cover.empty()
-      cover.addClass('img-gallery-audio-modal-cover-empty')
+      currentPath = file.path;
+      title.setText(getMediaDisplayName(file));
+      subtitle.setText("");
+      subtitle.addClass("is-empty");
+      audio.src = file.uri;
+      audio.setAttribute("type", getAudioMimeType(file.path));
+      audio.currentTime = 0;
+      cover.empty();
+      cover.addClass("img-gallery-audio-modal-cover-empty");
 
-      const activePath = file.path
+      const activePath = file.path;
 
       // Guard against a slower metadata read landing after the user switched
       // to (or closed) a different track.
       void getAudioMetadata(app, file)
         .then((metadata) => {
-          if (currentPath !== activePath) return
-          title.setText(metadata?.title || getMediaDisplayName(file))
-          subtitle.setText(getAudioSubtitle(metadata))
-          subtitle.toggleClass('is-empty', !subtitle.getText())
+          if (currentPath !== activePath) return;
+          title.setText(metadata?.title || getMediaDisplayName(file));
+          subtitle.setText(getAudioSubtitle(metadata));
+          subtitle.toggleClass("is-empty", !subtitle.getText());
         })
-        .catch(logMediaError)
+        .catch(logMediaError);
 
       void getAudioArtworkUrl(app, file)
         .then((artworkUrl) => {
-          if (currentPath !== activePath || !artworkUrl) return
-          cover.removeClass('img-gallery-audio-modal-cover-empty')
-          const img = cover.createEl('img', { cls: 'img-gallery-audio-modal-cover-image' })
-          img.src = artworkUrl
-          img.alt = file.name
+          if (currentPath !== activePath || !artworkUrl) return;
+          cover.removeClass("img-gallery-audio-modal-cover-empty");
+          const img = cover.createEl("img", { cls: "img-gallery-audio-modal-cover-image" });
+          img.src = artworkUrl;
+          img.alt = file.name;
         })
-        .catch(logMediaError)
+        .catch(logMediaError);
 
-      shell.modal.removeClass(shell.hiddenClass)
+      shell.modal.removeClass(shell.hiddenClass);
       if (galleryRuntimeSettings.autoplayAudioOnOpen) {
-        void audio.play().catch(() => {})
+        void audio.play().catch(() => {});
       }
     },
     destroy: () => {
-      shell.removeEscListener()
-      close()
-      shell.modal.remove()
+      shell.removeEscListener();
+      close();
+      shell.modal.remove();
     },
-  }
-}
+  };
+};
 
 const getAudioModal = (app: App): MediaModalController => {
   if (!audioModalSingleton) {
-    audioModalSingleton = createAudioModal(app)
+    audioModalSingleton = createAudioModal(app);
   }
-  return audioModalSingleton
-}
+  return audioModalSingleton;
+};
 
 export const cleanupMediaModals = (): void => {
-  videoModalSingleton?.destroy()
-  audioModalSingleton?.destroy()
-  videoModalSingleton = null
-  audioModalSingleton = null
-}
+  videoModalSingleton?.destroy();
+  audioModalSingleton?.destroy();
+  videoModalSingleton = null;
+  audioModalSingleton = null;
+};
 
-const clampZoomValue = (value: number, min: number, max: number): number => Math.min(max, Math.max(min, value))
+const clampZoomValue = (value: number, min: number, max: number): number =>
+  Math.min(max, Math.max(min, value));
 
 const installCustomZoom = (galleryLightbox: LightGalleryInstance): (() => void) => {
   const zoomState = {
@@ -180,184 +200,203 @@ const installCustomZoom = (galleryLightbox: LightGalleryInstance): (() => void) 
     startX: 0,
     startY: 0,
     moved: false,
-  }
+  };
 
   const getCurrentImage = (): HTMLElement | null => {
-    return galleryLightbox.outer.get().querySelector<HTMLElement>('.lg-current .lg-image')
-  }
+    return galleryLightbox.outer.get().querySelector<HTMLElement>(".lg-current .lg-image");
+  };
 
   const getCurrentWrap = (): HTMLElement | null => {
-    return getCurrentImage()?.closest<HTMLElement>('.lg-img-wrap') ?? null
-  }
+    return getCurrentImage()?.closest<HTMLElement>(".lg-img-wrap") ?? null;
+  };
 
   const updateCursor = (image: HTMLElement | null): void => {
-    if (!image) return
-    const cursor = zoomState.scale > 1 ? (zoomState.dragging ? 'grabbing' : 'grab') : 'zoom-in'
-    setCssProps(image, { cursor })
-  }
+    if (!image) return;
+    const cursor = zoomState.scale > 1 ? (zoomState.dragging ? "grabbing" : "grab") : "zoom-in";
+    setCssProps(image, { cursor });
+  };
 
   const clampOffsets = (image: HTMLElement | null): void => {
-    const wrap = getCurrentWrap()
-    if (!image || !wrap) return
+    const wrap = getCurrentWrap();
+    if (!image || !wrap) return;
 
-    const maxX = Math.max(0, (image.clientWidth * (zoomState.scale - 1)) / 2)
-    const maxY = Math.max(0, (image.clientHeight * (zoomState.scale - 1)) / 2)
-    zoomState.x = clampZoomValue(zoomState.x, -maxX, maxX)
-    zoomState.y = clampZoomValue(zoomState.y, -maxY, maxY)
-  }
+    const maxX = Math.max(0, (image.clientWidth * (zoomState.scale - 1)) / 2);
+    const maxY = Math.max(0, (image.clientHeight * (zoomState.scale - 1)) / 2);
+    zoomState.x = clampZoomValue(zoomState.x, -maxX, maxX);
+    zoomState.y = clampZoomValue(zoomState.y, -maxY, maxY);
+  };
 
   const applyZoom = (): void => {
-    const image = getCurrentImage()
-    const wrap = getCurrentWrap()
-    if (!image || !wrap) return
+    const image = getCurrentImage();
+    const wrap = getCurrentWrap();
+    if (!image || !wrap) return;
 
-    clampOffsets(image)
-    wrap.classList.toggle('img-gallery-zoomed', zoomState.scale > 1)
+    clampOffsets(image);
+    wrap.classList.toggle("img-gallery-zoomed", zoomState.scale > 1);
     setCssProps(image, {
-      'transform-origin': 'center center',
-      transform: zoomState.scale > 1
-        ? `translate3d(${zoomState.x}px, ${zoomState.y}px, 0) scale(${zoomState.scale})`
-        : 'translate3d(0, 0, 0) scale(1)',
-      transition: zoomState.dragging ? 'none' : 'transform 120ms ease',
-    })
-    updateCursor(image)
-  }
+      "transform-origin": "center center",
+      transform:
+        zoomState.scale > 1
+          ? `translate3d(${zoomState.x}px, ${zoomState.y}px, 0) scale(${zoomState.scale})`
+          : "translate3d(0, 0, 0) scale(1)",
+      transition: zoomState.dragging ? "none" : "transform 120ms ease",
+    });
+    updateCursor(image);
+  };
 
   const resetZoom = (): void => {
-    zoomState.scale = 1
-    zoomState.x = 0
-    zoomState.y = 0
-    zoomState.dragging = false
-    zoomState.moved = false
-    applyZoom()
-  }
+    zoomState.scale = 1;
+    zoomState.x = 0;
+    zoomState.y = 0;
+    zoomState.dragging = false;
+    zoomState.moved = false;
+    applyZoom();
+  };
 
   const setZoom = (nextScale: number): void => {
-    zoomState.scale = clampZoomValue(nextScale, 1, 6)
+    zoomState.scale = clampZoomValue(nextScale, 1, 6);
     if (zoomState.scale === 1) {
-      zoomState.x = 0
-      zoomState.y = 0
+      zoomState.x = 0;
+      zoomState.y = 0;
     }
-    applyZoom()
-  }
+    applyZoom();
+  };
 
   const handleWheel = (event: WheelEvent): void => {
-    const image = getCurrentImage()
-    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return
-    event.preventDefault()
-    const delta = event.deltaY < 0 ? 0.35 : -0.35
-    setZoom(zoomState.scale + delta)
-  }
+    const image = getCurrentImage();
+    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return;
+    event.preventDefault();
+    const delta = event.deltaY < 0 ? 0.35 : -0.35;
+    setZoom(zoomState.scale + delta);
+  };
 
   const handlePointerDown = (event: PointerEvent): void => {
-    if (zoomState.scale <= 1) return
-    const image = getCurrentImage()
-    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return
+    if (zoomState.scale <= 1) return;
+    const image = getCurrentImage();
+    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return;
 
-    zoomState.dragging = true
-    zoomState.startX = event.clientX - zoomState.x
-    zoomState.startY = event.clientY - zoomState.y
-    zoomState.moved = false
-    updateCursor(image)
-    event.preventDefault()
-    event.stopPropagation()
-  }
+    zoomState.dragging = true;
+    zoomState.startX = event.clientX - zoomState.x;
+    zoomState.startY = event.clientY - zoomState.y;
+    zoomState.moved = false;
+    updateCursor(image);
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const handlePointerMove = (event: PointerEvent): void => {
-    if (!zoomState.dragging) return
-    zoomState.x = event.clientX - zoomState.startX
-    zoomState.y = event.clientY - zoomState.startY
-    zoomState.moved = true
-    applyZoom()
-    event.preventDefault()
-  }
+    if (!zoomState.dragging) return;
+    zoomState.x = event.clientX - zoomState.startX;
+    zoomState.y = event.clientY - zoomState.startY;
+    zoomState.moved = true;
+    applyZoom();
+    event.preventDefault();
+  };
 
   const handlePointerUp = (event: PointerEvent): void => {
-    if (!zoomState.dragging) return
-    zoomState.dragging = false
-    applyZoom()
-    event.preventDefault()
-  }
+    if (!zoomState.dragging) return;
+    zoomState.dragging = false;
+    applyZoom();
+    event.preventDefault();
+  };
 
   const handleDblClick = (event: MouseEvent): void => {
-    const image = getCurrentImage()
-    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return
-    event.preventDefault()
-    setZoom(zoomState.scale > 1 ? 1 : 2.5)
-  }
+    const image = getCurrentImage();
+    if (!image || !(event.target instanceof Node) || !image.contains(event.target)) return;
+    event.preventDefault();
+    setZoom(zoomState.scale > 1 ? 1 : 2.5);
+  };
 
   const handleClick = (event: MouseEvent): void => {
-    const image = getCurrentImage()
-    if (!image || !(event.target instanceof Node) || !image.contains(event.target) || zoomState.moved) {
-      zoomState.moved = false
-      return
+    const image = getCurrentImage();
+    if (
+      !image ||
+      !(event.target instanceof Node) ||
+      !image.contains(event.target) ||
+      zoomState.moved
+    ) {
+      zoomState.moved = false;
+      return;
     }
 
     if (zoomState.scale > 1) {
-      event.preventDefault()
-      resetZoom()
+      event.preventDefault();
+      resetZoom();
     }
-  }
+  };
 
-  galleryLightbox.LGel.on('lgAfterOpen.imgGalleryZoom', resetZoom)
-  galleryLightbox.LGel.on('lgAfterSlide.imgGalleryZoom', resetZoom)
-  galleryLightbox.LGel.on('lgBeforeClose.imgGalleryZoom', resetZoom)
+  galleryLightbox.LGel.on("lgAfterOpen.imgGalleryZoom", resetZoom);
+  galleryLightbox.LGel.on("lgAfterSlide.imgGalleryZoom", resetZoom);
+  galleryLightbox.LGel.on("lgBeforeClose.imgGalleryZoom", resetZoom);
 
-  document.addEventListener('wheel', handleWheel, { passive: false })
-  document.addEventListener('pointerdown', handlePointerDown, true)
-  document.addEventListener('pointermove', handlePointerMove, true)
-  document.addEventListener('pointerup', handlePointerUp, true)
-  document.addEventListener('pointercancel', handlePointerUp, true)
-  document.addEventListener('dblclick', handleDblClick, true)
-  document.addEventListener('click', handleClick, true)
+  document.addEventListener("wheel", handleWheel, { passive: false });
+  document.addEventListener("pointerdown", handlePointerDown, true);
+  document.addEventListener("pointermove", handlePointerMove, true);
+  document.addEventListener("pointerup", handlePointerUp, true);
+  document.addEventListener("pointercancel", handlePointerUp, true);
+  document.addEventListener("dblclick", handleDblClick, true);
+  document.addEventListener("click", handleClick, true);
 
   return () => {
-    document.removeEventListener('wheel', handleWheel)
-    document.removeEventListener('pointerdown', handlePointerDown, true)
-    document.removeEventListener('pointermove', handlePointerMove, true)
-    document.removeEventListener('pointerup', handlePointerUp, true)
-    document.removeEventListener('pointercancel', handlePointerUp, true)
-    document.removeEventListener('dblclick', handleDblClick, true)
-    document.removeEventListener('click', handleClick, true)
-  }
-}
+    document.removeEventListener("wheel", handleWheel);
+    document.removeEventListener("pointerdown", handlePointerDown, true);
+    document.removeEventListener("pointermove", handlePointerMove, true);
+    document.removeEventListener("pointerup", handlePointerUp, true);
+    document.removeEventListener("pointercancel", handlePointerUp, true);
+    document.removeEventListener("dblclick", handleDblClick, true);
+    document.removeEventListener("click", handleClick, true);
+  };
+};
 
-const globalSearchBtn = (gallery: HTMLElement, imagesList: MediaEntry[], app: App, component: Component): void => {
+const globalSearchBtn = (
+  gallery: HTMLElement,
+  imagesList: MediaEntry[],
+  app: App,
+  component: Component,
+): void => {
   const onInit = (event: Event): void => {
-    const galleryEvent = event as LightGalleryInitEvent
-    const galleryInstance = galleryEvent.detail.instance
-    const btn = '<button type="button" id="btn-glob-search" class="lg-icon btn-glob-search"></button>'
-    galleryInstance.outer.find('.lg-toolbar').append(btn)
+    const galleryEvent = event as LightGalleryInitEvent;
+    const galleryInstance = galleryEvent.detail.instance;
+    const btn =
+      '<button type="button" id="btn-glob-search" class="lg-icon btn-glob-search"></button>';
+    galleryInstance.outer.find(".lg-toolbar").append(btn);
 
-    galleryInstance.outer.find('#btn-glob-search').on('click', () => {
-      const selected = imagesList[galleryInstance.index]
+    galleryInstance.outer.find("#btn-glob-search").on("click", () => {
+      const selected = imagesList[galleryInstance.index];
       if (!selected) {
-        galleryInstance.closeGallery()
-        return
+        galleryInstance.closeGallery();
+        return;
       }
 
       const selectedFile = /^https?:\/\//i.test(selected.path)
         ? null
-        : (selected.vaultFile ?? app.vault.getAbstractFileByPath(selected.path))
+        : (selected.vaultFile ?? app.vault.getAbstractFileByPath(selected.path));
 
       if (selectedFile instanceof TFile) {
-        void app.workspace.getLeaf(true).openFile(selectedFile, { active: true })
+        void app.workspace.getLeaf(true).openFile(selectedFile, { active: true });
       }
 
-      galleryInstance.closeGallery()
-    })
-  }
+      galleryInstance.closeGallery();
+    });
+  };
 
   // 'lgInit' is a custom lightGallery event, so it is not in registerDomEvent's
   // typed event map — attach manually and unregister via the component lifecycle.
-  gallery.addEventListener('lgInit', onInit)
-  component.register(() => { gallery.removeEventListener('lgInit', onInit); })
-}
+  gallery.addEventListener("lgInit", onInit);
+  component.register(() => {
+    gallery.removeEventListener("lgInit", onInit);
+  });
+};
 
-const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App, component: Component): LightGalleryInstance => {
-  const lightboxImages = imagesList.filter((file) => file.kind === 'image')
+const buildLightbox = (
+  gallery: HTMLElement,
+  imagesList: MediaEntry[],
+  app: App,
+  component: Component,
+): LightGalleryInstance => {
+  const lightboxImages = imagesList.filter((file) => file.kind === "image");
   if (Platform.isDesktop && lightboxImages.length) {
-    globalSearchBtn(gallery, lightboxImages, app, component)
+    globalSearchBtn(gallery, lightboxImages, app, component);
   }
 
   const galleryLightbox = lightGallery(gallery, {
@@ -367,40 +406,40 @@ const buildLightbox = (gallery: HTMLElement, imagesList: MediaEntry[], app: App,
     download: false,
     thumbnail: true,
     loop: false,
-    mode: 'lg-fade',
-    licenseKey: '1234-1234-123-1234',
-  }) as unknown as LightGalleryInstance
+    mode: "lg-fade",
+    licenseKey: "1234-1234-123-1234",
+  }) as unknown as LightGalleryInstance;
 
-  let destroyZoom: (() => void) | null = null
+  let destroyZoom: (() => void) | null = null;
   if (Platform.isDesktop) {
-    destroyZoom = installCustomZoom(galleryLightbox)
+    destroyZoom = installCustomZoom(galleryLightbox);
   }
   if (Platform.isIosApp || Platform.isAndroidApp) {
-    galleryLightbox.outer.addClass('media-gallery-hide-mobile-controls')
+    galleryLightbox.outer.addClass("media-gallery-hide-mobile-controls");
   }
-  galleryLightbox.__imgGalleryDestroyZoom = destroyZoom
+  galleryLightbox.__imgGalleryDestroyZoom = destroyZoom;
 
   gallery.querySelectorAll<HTMLElement>('.grid-item[data-media-kind="video"]').forEach((item) => {
-    component.registerDomEvent(item, 'click', () => {
-      const itemPath = item.getAttribute('data-path')
-      const matched = imagesList.find((file) => file.kind === 'video' && file.path === itemPath)
+    component.registerDomEvent(item, "click", () => {
+      const itemPath = item.getAttribute("data-path");
+      const matched = imagesList.find((file) => file.kind === "video" && file.path === itemPath);
       if (matched) {
-        getVideoModal().open(matched)
+        getVideoModal().open(matched);
       }
-    })
-  })
+    });
+  });
 
   gallery.querySelectorAll<HTMLElement>('.grid-item[data-media-kind="audio"]').forEach((item) => {
-    component.registerDomEvent(item, 'click', () => {
-      const itemPath = item.getAttribute('data-path')
-      const matched = imagesList.find((file) => file.kind === 'audio' && file.path === itemPath)
+    component.registerDomEvent(item, "click", () => {
+      const itemPath = item.getAttribute("data-path");
+      const matched = imagesList.find((file) => file.kind === "audio" && file.path === itemPath);
       if (matched) {
-        getAudioModal(app).open(matched)
+        getAudioModal(app).open(matched);
       }
-    })
-  })
+    });
+  });
 
-  return galleryLightbox
-}
+  return galleryLightbox;
+};
 
-export default buildLightbox
+export default buildLightbox;
